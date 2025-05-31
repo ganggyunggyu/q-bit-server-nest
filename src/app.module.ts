@@ -1,15 +1,17 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose'; // ✅ 추가
+import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb://localhost:27017/your-db-name'), // ✅ 여기에 연결 URI 입력
+    MongooseModule.forRoot('mongodb://localhost:27017/your-db-name'),
     AuthModule,
     UserModule,
+    ConfigModule,
   ],
   controllers: [AppController],
   providers: [AppService],

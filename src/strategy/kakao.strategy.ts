@@ -17,8 +17,10 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
     private readonly userService: UserService,
     private readonly configService: ConfigService,
   ) {
-    const clientID = configService.get<string>('KAKAO_CLIENT_ID');
-    const callbackURL = configService.get<string>('KAKAO_CALLBACK_URL');
+    const clientID = 'your_kakao_client_id_here';
+    const callbackURL = 'http://localhost:5173/auth/kakao-callback';
+    // const clientID = configService.get<string>('KAKAO_CLIENT_ID');
+    // const callbackURL = configService.get<string>('KAKAO_CALLBACK_URL');
 
     if (!clientID || !callbackURL) {
       throw new Error('Kakao OAuth 설정이 누락되었습니다.');
