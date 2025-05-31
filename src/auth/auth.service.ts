@@ -39,7 +39,7 @@ export class AuthService {
 
   getJWT(userId: string) {
     const payload = { sub: userId };
-
+    console.log(process.env.JWT_SECRET);
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
       expiresIn: '1h',

@@ -17,7 +17,7 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
     private readonly userService: UserService,
     private readonly configService: ConfigService,
   ) {
-    const clientID = 'your_kakao_client_id_here';
+    const clientID = 'e629e37471a602332f12883392235cb5';
     const callbackURL = 'http://localhost:5173/auth/kakao-callback';
     // const clientID = configService.get<string>('KAKAO_CLIENT_ID');
     // const callbackURL = configService.get<string>('KAKAO_CALLBACK_URL');
@@ -33,6 +33,8 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
 
   async validate(accessToken: string, refreshToken: string, profile: Profile) {
     const scope = this.configService.get<string>('KAKAO_SCOPE');
+
+    console.log(profile);
 
     const kakaoId = profile.id.toString();
     const email = profile._json.kakao_account?.email || 'temp@temp.com';

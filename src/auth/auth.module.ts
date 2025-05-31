@@ -17,7 +17,8 @@ import { ConfigModule } from '@nestjs/config';
   imports: [
     PassportModule.register({ session: false }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET,
+      // secret: process.env.JWT_SECRET,
+      secret: 'secret',
       signOptions: { expiresIn: '1h' },
     }),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),

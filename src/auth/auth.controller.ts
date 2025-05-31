@@ -36,6 +36,8 @@ export class AuthController {
   async kakaoCallback(@Req() req: Request, @Res() res: Response) {
     const user = req.user as any;
 
+    console.log(req.user);
+
     const { accessToken, refreshToken } = this.authService.getJWT(user.id);
 
     res.cookie('accessToken', accessToken, {
