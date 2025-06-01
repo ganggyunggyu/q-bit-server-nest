@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Post,
@@ -31,12 +32,18 @@ export class AuthController {
   @ApiOperation({
     summary: '카카오 로그인 콜백',
     description:
-      '카카오 로그인 성공 시 accessToken과 refreshToken을 쿠키에 저장하고 클라이언트로 리다이렉트',
+      '카카오 로그인 성공 시 신규 유저는 온보딩 페이지로, 기존 유저는 쿠키 설정 후 홈으로 리다이렉트',
   })
   async kakaoCallback(@Req() req: Request, @Res() res: Response) {
     const user = req.user as any;
+    const clientURL =
+      this.configService.get<string>('CLIENT_URL') || 'http://localhost:5173';
 
-    console.log(req.user);
+    if (user.isNewUser) {
+      const onboardingURL = `${clientURL}/onboarding-1?kakaoId=${user.kakaoId}&email=${user.email}&displayName=${encodeURIComponent(user.displayName)}`;
+
+      return res.redirect(onboardingURL);
+    }
 
     const { accessToken, refreshToken } = this.authService.getJWT(user.id);
 
@@ -58,10 +65,7 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
     });
 
-    const clientURL =
-      this.configService.get<string>('CLIENT_URL') || 'http://localhost:5173';
-
-    res.redirect(clientURL);
+    return res.redirect(clientURL); // 기존 유저 홈으로
   }
 
   @Get('me')
@@ -120,5 +124,23 @@ export class AuthController {
       console.error('refreshToken 검증 실패:', error);
       throw new UnauthorizedException('리프레시 토큰 검증 실패');
     }
+  }
+
+  @Post('signup')
+  @ApiOperation({
+    summary: '카카오 로그인 온보딩 후 회원가입',
+    description: '온보딩 완료 후 추가 정보를 받아 최종적으로 회원가입 처리',
+  })
+  async kakaoSignup(
+    @Req() req: Request,
+    @Body()
+    body: { user },
+  ) {
+    const user = await this.authService.registerKakaoUser(body.user);
+
+    return {
+      message: '회원가입 완료',
+      user,
+    };
   }
 }

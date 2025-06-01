@@ -15,25 +15,9 @@ export class AuthService {
     return this.userModel.findOne({ kakaoId }).exec();
   }
 
-  async registerKakaoUser({
-    kakaoId,
-    email,
-    nickname,
-    phoneNumber,
-  }: {
-    kakaoId: string;
-    email: string;
-    nickname: string;
-    phoneNumber?: string;
-  }): Promise<User> {
-    const existingUser = await this.findByKakaoId(kakaoId);
-    if (existingUser) return existingUser;
-
+  async registerKakaoUser(user): Promise<User> {
     return this.userModel.create({
-      kakaoId,
-      email,
-      displayName: nickname,
-      phoneNumber,
+      user,
     });
   }
 
