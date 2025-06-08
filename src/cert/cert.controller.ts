@@ -1,6 +1,12 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { CertService } from './cert.service';
-import { ApiOperation, ApiQuery, ApiTags, ApiParam } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+  ApiParam,
+  ApiResponse,
+} from '@nestjs/swagger';
 
 @ApiTags('자격증') // 그룹 이름
 @Controller('cert')
@@ -40,15 +46,6 @@ export class CertController {
       mdobligfldnm,
     });
   }
-  @Get(':id')
-  @ApiOperation({
-    summary: '자격증 상세 조회',
-    description: '자격증 ID로 상세 정보 조회',
-  })
-  @ApiParam({ name: 'id', description: '자격증 MongoDB ObjectId' })
-  async getCertById(@Param('id') id: string) {
-    return this.certService.getCertById(id);
-  }
 
   @Get('search/keyword')
   @ApiOperation({
@@ -70,5 +67,34 @@ export class CertController {
       return { message: '검색어가 필요합니다.' };
     }
     return this.certService.getSearchCertByJmnm(keyword, +limit);
+  }
+
+  @Get('popular')
+  @ApiOperation({ summary: '20대 인기 자격증 5개 조회' })
+  @ApiResponse({
+    status: 200,
+    description: '인기 자격증 목록 조회 성공',
+    schema: {
+      example: [
+        { _id: '683c20625af8b0548b647eca', jmfldnm: '정보처리기사' },
+        { _id: '683c205e5af8b0548b647dfb', jmfldnm: '전기기사' },
+        { _id: '683c205c5af8b0548b647dab', jmfldnm: '토목기사' },
+        { _id: '683c205b5af8b0548b647d85', jmfldnm: '건축기사' },
+        { _id: '683c205e5af8b0548b647dfc', jmfldnm: '산업안전기사' },
+      ],
+    },
+  })
+  async getPopularCerts() {
+    return this.certService.getPopularCerts();
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: '자격증 상세 조회',
+    description: '자격증 ID로 상세 정보 조회',
+  })
+  @ApiParam({ name: 'id', description: '자격증 MongoDB ObjectId' })
+  async getCertById(@Param('id') id: string) {
+    return this.certService.getCertById(id);
   }
 }

@@ -59,4 +59,21 @@ export class CertService {
 
     return this.certModel.aggregate(pipeline).exec();
   }
+
+  async getPopularCerts() {
+    const targetIds = [
+      '683c20625af8b0548b647eca',
+      '683c205e5af8b0548b647dfb',
+      '683c205c5af8b0548b647dab',
+      '683c205b5af8b0548b647d85',
+      '683c205e5af8b0548b647dfc',
+    ];
+
+    const certs = await this.certModel.find(
+      { _id: { $in: targetIds } },
+      { _id: 1, jmfldnm: 1 },
+    );
+
+    return certs;
+  }
 }
