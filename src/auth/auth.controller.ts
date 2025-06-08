@@ -126,7 +126,7 @@ export class AuthController {
     }
   }
 
-  @Post('signup')
+  @Post('join')
   @ApiOperation({
     summary: '카카오 로그인 온보딩 후 회원가입',
     description: '온보딩 완료 후 추가 정보를 받아 최종적으로 회원가입 처리',
@@ -135,8 +135,28 @@ export class AuthController {
     @Req() req: Request,
     @Body()
     body: { user },
+    @Res() res: Response,
   ) {
     const user = await this.authService.registerKakaoUser(body.user);
+
+    const { accessToken, refreshToken } = this.authService.getJWT(user.kakaoId);
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
+    res.cookie('isLoggedIn', true, {
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
 
     return {
       message: '회원가입 완료',
