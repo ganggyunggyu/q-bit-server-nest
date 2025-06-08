@@ -4,18 +4,23 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CertModule } from './cert/cert.module';
 
 @Module({
   imports: [
-    MongooseModule.forRoot(
-      'mongodb+srv://kkk819:12qwaszx@cluster0.uw5n95x.mongodb.net/qit',
-    ),
-
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    MongooseModule.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGODB_URI'),
+      }),
+      inject: [ConfigService],
+    }),
     AuthModule,
     UserModule,
-    ConfigModule,
     CertModule,
   ],
   controllers: [AppController],
