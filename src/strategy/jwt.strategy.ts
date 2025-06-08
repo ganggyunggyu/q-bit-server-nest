@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { UserService } from 'src/user/user.service';
 
 export interface JwtPayload {
-  sub: string; // userId
+  sub: string;
 }
 
 @Injectable()
@@ -19,8 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         (req) => req?.cookies?.accessToken,
       ]),
       ignoreExpiration: false,
-      // secretOrKey: configService.get<string>('JWT_SECRET') as string,
-      secretOrKey: 'secret',
+      secretOrKey: configService.get<string>('JWT_SECRET') as string,
     });
   }
 

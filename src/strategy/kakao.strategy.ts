@@ -3,7 +3,6 @@ import { Strategy, Profile } from 'passport-kakao';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from 'src/user/user.service';
-import { ApiOperation } from '@nestjs/swagger';
 import { AuthService } from 'src/auth/auth.service';
 
 export const extractKakaoProfile = (profile: Profile): newUser => {
@@ -38,10 +37,8 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {
-    const clientID = 'e629e37471a602332f12883392235cb5';
-    const callbackURL = 'http://localhost:5173/auth/kakao-callback';
-    // const clientID = configService.get<string>('KAKAO_CLIENT_ID');
-    // const callbackURL = configService.get<string>('KAKAO_CALLBACK_URL');
+    const clientID = configService.get<string>('KAKAO_CLIENT_ID');
+    const callbackURL = configService.get<string>('KAKAO_CALLBACK_URL');
 
     if (!clientID || !callbackURL) {
       throw new Error('Kakao OAuth 설정이 누락되었습니다.');
@@ -58,10 +55,9 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
     const existingUser = await this.userService.findByKakaoId(userData.kakaoId);
 
     if (existingUser) {
-      return existingUser; // 기존 유저는 바로 로그인
+      return existingUser;
     }
 
-    // 신규 유저 → 온보딩 필요
     return {
       ...userData,
       isNewUser: true,
