@@ -16,7 +16,6 @@ import { CurrentUser } from 'src/user/decorator/user.decorator';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserService } from 'src/user/user.service';
 import { JwtService } from '@nestjs/jwt';
-import { RemindType, User } from 'src/user/schema/user.schema';
 import { JoinUserRequest } from 'src/user/dto';
 
 @ApiTags('Auth')
@@ -41,12 +40,26 @@ export class AuthController {
       this.configService.get<string>('CLIENT_URL') || 'http://localhost:5173';
     const user = req.user as any;
 
-    if (user) return res.redirect(`${clientURL}/?isAuth=true`);
-
     if (user.isNewUser) {
       const onboardingURL = `${clientURL}/onboarding-1?kakaoId=${user.kakaoId}&email=${user.email}&displayName=${encodeURIComponent(user.displayName)}`;
 
       return res.redirect(onboardingURL);
+    } else if (user) {
+      const { accessToken, refreshToken } = this.authService.getJWT(
+        user.kakaoId,
+      );
+      res.cookie('accessToken', accessToken, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+      });
+
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+      });
+      return res.redirect(`${clientURL}/?isAuth=true`);
     }
 
     return res.redirect(clientURL);
