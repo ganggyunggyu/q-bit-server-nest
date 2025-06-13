@@ -76,4 +76,19 @@ export class CertService {
 
     return certs;
   }
+
+  async getUpcomingCerts(limit: number): Promise<Cert[]> {
+    // TODO: 시험 일정 정보가 추가되면 아래 주석 해제하고 정확한 필터링 로직 사용 예정
+    // const oneWeekFromNow = new Date();
+    // oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+
+    // return this.certModel.find({
+    //   examSchedule: {
+    //     $lte: oneWeekFromNow,
+    //     $gte: new Date(),
+    //   },
+    // }).limit(3).exec();
+
+    return this.certModel.aggregate([{ $sample: { size: limit } }]).exec();
+  }
 }

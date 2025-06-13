@@ -88,6 +88,19 @@ export class CertController {
     return this.certService.getPopularCerts();
   }
 
+  @Get('upcoming')
+  @ApiOperation({
+    summary: '시험일정 일주일 미만 3개',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: '최대 결과 개수',
+    example: 3,
+  })
+  async getUpcomingCerts(@Query('limit') limit = 3) {
+    return this.certService.getUpcomingCerts(+limit);
+  }
   @Get(':id')
   @ApiOperation({
     summary: '자격증 상세 조회',
