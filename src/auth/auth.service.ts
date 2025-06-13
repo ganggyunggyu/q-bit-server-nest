@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../user/schema/user.schema';
+import { JoinUserRequest } from 'src/user/dto';
 
 @Injectable()
 export class AuthService {
@@ -37,22 +38,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async join({
-    kakaoId,
-    displayName,
-    phoneNumber,
-    addressList,
-  }: {
-    kakaoId?: string;
-    addressList: string[];
-    displayName: string;
-    phoneNumber?: string;
-  }): Promise<User> {
-    return this.userModel.create({
-      kakaoId,
-      addressList,
-      displayName,
-      phoneNumber,
-    });
+  async join(user: JoinUserRequest): Promise<User> {
+    return this.userModel.create(user);
   }
 }

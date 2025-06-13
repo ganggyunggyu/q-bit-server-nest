@@ -16,6 +16,8 @@ import { CurrentUser } from 'src/user/decorator/user.decorator';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserService } from 'src/user/user.service';
 import { JwtService } from '@nestjs/jwt';
+import { RemindType, User } from 'src/user/schema/user.schema';
+import { JoinUserRequest } from 'src/user/dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -35,9 +37,11 @@ export class AuthController {
       '카카오 로그인 성공 시 신규 유저는 온보딩 페이지로, 기존 유저는 쿠키 설정 후 홈으로 리다이렉트',
   })
   async kakaoCallback(@Req() req: Request, @Res() res: Response) {
-    const user = req.user as any;
     const clientURL =
       this.configService.get<string>('CLIENT_URL') || 'http://localhost:5173';
+    const user = req.user as any;
+
+    if (user) return res.redirect(`${clientURL}/?isAuth=true`);
 
     if (user.isNewUser) {
       const onboardingURL = `${clientURL}/onboarding-1?kakaoId=${user.kakaoId}&email=${user.email}&displayName=${encodeURIComponent(user.displayName)}`;
@@ -45,27 +49,7 @@ export class AuthController {
       return res.redirect(onboardingURL);
     }
 
-    const { accessToken, refreshToken } = this.authService.getJWT(user.id);
-
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-    });
-
-    res.cookie('isLoggedIn', true, {
-      httpOnly: false,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-    });
-
-    return res.redirect(clientURL); // 기존 유저 홈으로
+    return res.redirect(clientURL);
   }
 
   @Get('me')
@@ -132,12 +116,11 @@ export class AuthController {
     description: '온보딩 완료 후 추가 정보를 받아 최종적으로 회원가입 처리',
   })
   async kakaoSignup(
-    @Req() req: Request,
     @Body()
-    body: { user },
+    body: { user: JoinUserRequest },
     @Res() res: Response,
   ) {
-    const user = await this.authService.registerKakaoUser(body.user);
+    const user = await this.authService.join(body.user);
 
     const { accessToken, refreshToken } = this.authService.getJWT(user.kakaoId);
     res.cookie('accessToken', accessToken, {
@@ -148,12 +131,6 @@ export class AuthController {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-    });
-
-    res.cookie('isLoggedIn', true, {
-      httpOnly: false,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
     });
