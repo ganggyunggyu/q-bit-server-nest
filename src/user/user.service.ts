@@ -18,7 +18,12 @@ export class UserService {
     return this.userModel.create(user);
   }
 
-  async findById(userId: string): Promise<User | null> {
-    return this.userModel.findById(userId).exec();
+  async findById(userId: string) {
+    const user = await this.userModel.findById(userId).exec();
+
+    if (user) {
+      return user;
+    }
+    // return this.userModel.findById(userId).exec();
   }
 }

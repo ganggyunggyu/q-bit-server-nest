@@ -45,9 +45,7 @@ export class AuthController {
 
       return res.redirect(onboardingURL);
     } else if (user) {
-      const { accessToken, refreshToken } = this.authService.getJWT(
-        user.kakaoId,
-      );
+      const { accessToken, refreshToken } = this.authService.getJWT(user._id);
       res.cookie('accessToken', accessToken, {
         httpOnly: true,
         sameSite: 'lax',
@@ -104,9 +102,7 @@ export class AuthController {
         throw new UnauthorizedException('유저 없음');
       }
 
-      const { accessToken } = await this.authService.getJWT(
-        user.kakaoId as string,
-      );
+      const { accessToken } = await this.authService.getJWT(user._id as string);
 
       const cookieOptions: CookieOptions = {
         sameSite: 'lax',
@@ -135,7 +131,9 @@ export class AuthController {
   ) {
     const user = await this.authService.join(body.user);
 
-    const { accessToken, refreshToken } = this.authService.getJWT(user.kakaoId);
+    const { accessToken, refreshToken } = this.authService.getJWT(
+      user._id!.toString(),
+    );
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       sameSite: 'lax',

@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from 'src/user/user.service';
+import { UserDocument } from 'src/user/schema/user.schema';
 
 export interface JwtPayload {
   sub: string;

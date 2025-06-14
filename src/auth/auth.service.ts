@@ -12,19 +12,18 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async findByKakaoId(kakaoId: string): Promise<User | null> {
+  async findByKakaoId(kakaoId: string): Promise<UserDocument | null> {
     return this.userModel.findOne({ kakaoId }).exec();
   }
 
-  async registerKakaoUser(user): Promise<User> {
+  async registerKakaoUser(user): Promise<UserDocument> {
     return this.userModel.create({
-      user,
+      ...user,
     });
   }
 
   getJWT(userId: string) {
     const payload = { sub: userId };
-    console.log(process.env.JWT_SECRET);
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
       expiresIn: '1h',
@@ -38,7 +37,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async join(user: JoinUserRequest): Promise<User> {
+  async join(user: JoinUserRequest): Promise<UserDocument> {
     return this.userModel.create(user);
   }
 }
