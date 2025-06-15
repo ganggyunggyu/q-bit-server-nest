@@ -1,4 +1,12 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CertService } from './cert.service';
 import {
   ApiOperation,
@@ -6,7 +14,10 @@ import {
   ApiTags,
   ApiParam,
   ApiResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
+import { CurrentUser } from 'src/user/decorator/user.decorator';
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
 @ApiTags('자격증') // 그룹 이름
 @Controller('cert')
@@ -109,5 +120,59 @@ export class CertController {
   @ApiParam({ name: 'id', description: '자격증 MongoDB ObjectId' })
   async getCertById(@Param('id') id: string) {
     return this.certService.getCertById(id);
+  }
+
+  @Get('/remind/list')
+  @ApiOperation({ summary: '내 리마인드 자격증 리스트 조회' })
+  @ApiResponse({
+    status: 200,
+    description: '내가 설정한 자격증 리스트',
+    schema: {
+      example: [
+        {
+          _id: '664a84ffb1d6e9b54a7d8a12',
+          jmfldnm: '정보처리기사',
+          agency: '한국산업인력공단',
+          seriesnm: '기사',
+        },
+      ],
+    },
+  })
+  @ApiBearerAuth('accessToken')
+  @UseGuards(JwtAuthGuard)
+  async getMyRemindCerts(@CurrentUser() user) {
+    return this.certService.getMyRemindCerts(user._id);
+  }
+
+  @Post('/remind/:id')
+  @ApiOperation({ summary: '리마인드 자격증 추가' })
+  @ApiParam({ name: 'id', description: '자격증 ObjectId' })
+  @ApiResponse({
+    status: 201,
+    description: '자격증이 리마인드 리스트에 추가됨',
+    schema: {
+      example: { message: '추가 완료' },
+    },
+  })
+  @ApiBearerAuth('accessToken')
+  @UseGuards(JwtAuthGuard)
+  async addRemindCert(@CurrentUser() user, @Param('id') id: string) {
+    return this.certService.addRemindCert(user._id, id);
+  }
+
+  @Delete('/remind/:id')
+  @ApiOperation({ summary: '리마인드 자격증 제거' })
+  @ApiParam({ name: 'id', description: '자격증 ObjectId' })
+  @ApiResponse({
+    status: 200,
+    description: '자격증이 리마인드 리스트에서 제거됨',
+    schema: {
+      example: { message: '제거 완료' },
+    },
+  })
+  @ApiBearerAuth('accessToken')
+  @UseGuards(JwtAuthGuard)
+  async removeRemindCert(@CurrentUser() user, @Param('id') id: string) {
+    return this.certService.removeRemindCert(user._id, id);
   }
 }

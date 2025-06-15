@@ -1,11 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cert, CertDocument } from './schema/cert.schema';
+import { User, UserDocument } from 'src/user/schema/user.schema';
+import mongoose, { Types } from 'mongoose';
 
 @Injectable()
 export class CertService {
-  constructor(@InjectModel(Cert.name) private certModel: Model<CertDocument>) {}
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    @InjectModel(Cert.name) private readonly certModel: Model<CertDocument>,
+  ) {}
 
   async searchCerts(filters: {
     keyword?: string;
@@ -29,7 +34,6 @@ export class CertService {
   }
 
   async getCertById(id: string) {
-    console.log(id);
     return this.certModel.findById(id).exec();
   }
 
@@ -90,5 +94,40 @@ export class CertService {
     // }).limit(3).exec();
 
     return this.certModel.aggregate([{ $sample: { size: limit } }]).exec();
+  }
+
+  // 🔑 remindCerts 추가
+  async addRemindCert(userId: string, certId: string) {
+    const cert = await this.certModel.findById(certId);
+    if (!cert) throw new NotFoundException('자격증 없음');
+
+    await this.userModel.findByIdAndUpdate(
+      userId,
+      { $addToSet: { remindCerts: new Types.ObjectId(certId) } },
+      { new: true },
+    );
+    return { message: '추가 완료' };
+  }
+
+  // 🔑 remindCerts 제거
+  async removeRemindCert(userId: string, certId: string) {
+    await this.userModel.findByIdAndUpdate(
+      userId,
+      { $pull: { remindCerts: new Types.ObjectId(certId) } },
+      { new: true },
+    );
+    return { message: '제거 완료' };
+  }
+
+  // 🔑 현재 내 리스트 조회
+  async getMyRemindCerts(userId: string) {
+    const user = await this.userModel
+      .findById(userId)
+      .populate('remindCerts')
+      .exec();
+
+    if (!user) throw new NotFoundException('유저 없음');
+
+    return user.remindCerts;
   }
 }
