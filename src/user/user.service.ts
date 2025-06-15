@@ -14,7 +14,6 @@ export class UserService {
   }
 
   async createKakaoUser(user: newUser): Promise<User> {
-    console.log(user);
     return this.userModel.create(user);
   }
 
@@ -24,6 +23,5 @@ export class UserService {
     if (user) {
       return user;
     }
-    // return this.userModel.findById(userId).exec();
   }
 }

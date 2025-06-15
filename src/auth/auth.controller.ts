@@ -72,7 +72,6 @@ export class AuthController {
       '쿠키에 저장된 accessToken을 이용해 현재 로그인된 유저 정보를 조회',
   })
   getMe(@CurrentUser() user) {
-    console.log(user);
     return user;
   }
 
