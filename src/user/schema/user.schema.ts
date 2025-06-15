@@ -26,7 +26,7 @@ export class User {
   remindType?: RemindType;
 
   @Prop({ type: [Types.ObjectId], ref: 'Cert', default: [] })
-  interestedCerts: Types.ObjectId[];
+  remindCerts: Types.ObjectId[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
