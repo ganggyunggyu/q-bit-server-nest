@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { Cert, CertDocument } from './schema/cert.schema';
 import { User, UserDocument } from 'src/user/schema/user.schema';
 import mongoose, { Types } from 'mongoose';
+import { shuffle } from 'es-toolkit';
 
 @Injectable()
 export class CertService {
@@ -66,37 +67,68 @@ export class CertService {
 
   async getPopularCerts() {
     const targetIds = [
-      '683c20625af8b0548b647eca',
-      '683c205e5af8b0548b647dfb',
-      '683c205c5af8b0548b647dab',
-      '683c205b5af8b0548b647d85',
-      '683c205e5af8b0548b647dfc',
+      '68529189514e0802729cff70',
+      '685208c24e8e01f9f2534f9d',
+      '685208c34e8e01f9f2534faa',
+      '685208c34e8e01f9f2534fab',
+      '685208be4e8e01f9f2534f4d',
+      '685208ba4e8e01f9f2534f07',
+      '685208c54e8e01f9f2534fd6',
+      '685208cd4e8e01f9f2535078',
+      '685208bb4e8e01f9f2534f12',
+      '685299ff514e0802729cff73',
     ];
 
-    const certs = await this.certModel.find(
-      { _id: { $in: targetIds } },
-      { _id: 1, jmfldnm: 1 },
-    );
+    const certs = await this.certModel
+      .find({ _id: { $in: targetIds } }, { _id: 1, jmfldnm: 1 })
+      .lean();
 
-    return certs;
+    const shuffled = shuffle(certs);
+
+    return shuffled.slice(0, 5);
   }
 
-  async getUpcomingCerts(limit: number): Promise<Cert[]> {
-    // TODO: 시험 일정 정보가 추가되면 아래 주석 해제하고 정확한 필터링 로직 사용 예정
-    // const oneWeekFromNow = new Date();
-    // oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+  async getUpcomingCerts(limit: number = 3): Promise<Cert[]> {
+    const now = new Date();
+    const oneWeekFromNow = new Date();
+    oneWeekFromNow.setDate(now.getDate() + 7);
+    const result = await this.certModel
+      .aggregate([
+        { $unwind: '$schedule' },
 
-    // return this.certModel.find({
-    //   examSchedule: {
-    //     $lte: oneWeekFromNow,
-    //     $gte: new Date(),
-    //   },
-    // }).limit(3).exec();
+        {
+          $match: {
+            'schedule.docexamdt': { $regex: /^[0-9]{8}$/ },
+          },
+        },
 
-    return this.certModel.aggregate([{ $sample: { size: limit } }]).exec();
+        {
+          $addFields: {
+            scheduleDate: {
+              $dateFromString: {
+                dateString: '$schedule.docexamdt',
+                format: '%Y%m%d',
+              },
+            },
+          },
+        },
+
+        {
+          $match: {
+            scheduleDate: {
+              $gte: now,
+              $lte: oneWeekFromNow,
+            },
+          },
+        },
+
+        { $limit: limit },
+      ])
+      .exec();
+
+    return result;
   }
 
-  // 🔑 remindCerts 추가
   async addRemindCert(userId: string, certId: string) {
     const cert = await this.certModel.findById(certId);
     if (!cert) throw new NotFoundException('자격증 없음');
@@ -109,7 +141,6 @@ export class CertService {
     return { message: '추가 완료' };
   }
 
-  // 🔑 remindCerts 제거
   async removeRemindCert(userId: string, certId: string) {
     await this.userModel.findByIdAndUpdate(
       userId,
@@ -119,7 +150,6 @@ export class CertService {
     return { message: '제거 완료' };
   }
 
-  // 🔑 현재 내 리스트 조회
   async getMyRemindCerts(userId: string) {
     const user = await this.userModel
       .findById(userId)
