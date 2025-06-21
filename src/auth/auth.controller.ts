@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Post,
   Req,
@@ -149,5 +150,24 @@ export class AuthController {
       message: '회원가입 완료',
       user,
     };
+  }
+
+  @Delete('logout')
+  @ApiOperation({
+    summary: '로그아웃',
+    description: '쿠키에서 accessToken, refreshToken 제거 후 로그아웃 처리',
+  })
+  async logout(@Res() res: Response) {
+    const cookieOptions: CookieOptions = {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    };
+
+    res.clearCookie('accessToken', cookieOptions);
+    res.clearCookie('refreshToken', cookieOptions);
+
+    await this.authService.logout();
+    return res.status(200).send({ message: '로그아웃 완료' });
   }
 }
