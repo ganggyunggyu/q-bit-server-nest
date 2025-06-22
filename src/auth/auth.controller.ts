@@ -49,13 +49,13 @@ export class AuthController {
       const { accessToken, refreshToken } = this.authService.getJWT(user._id);
       res.cookie('accessToken', accessToken, {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none',
         secure: process.env.NODE_ENV === 'production',
       });
 
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none',
         secure: process.env.NODE_ENV === 'production',
       });
       return res.redirect(`${clientURL}/?isAuth=true`);
@@ -105,7 +105,7 @@ export class AuthController {
       const { accessToken } = await this.authService.getJWT(user._id as string);
 
       const cookieOptions: CookieOptions = {
-        sameSite: 'lax',
+        sameSite: 'none',
         secure: false,
         httpOnly: true,
       };
@@ -136,13 +136,13 @@ export class AuthController {
     );
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'none',
       secure: process.env.NODE_ENV === 'production',
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'none',
       secure: process.env.NODE_ENV === 'production',
     });
 
@@ -160,7 +160,7 @@ export class AuthController {
   async logout(@Res() res: Response) {
     const cookieOptions: CookieOptions = {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'none',
       secure: process.env.NODE_ENV === 'production',
     };
 
