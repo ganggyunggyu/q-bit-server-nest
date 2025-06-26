@@ -54,15 +54,13 @@ export class CertService {
       {
         $limit: limit,
       },
-      {
-        $project: {
-          _id: 1,
-          jmfldnm: 1,
-        },
-      },
     ];
 
-    return this.certModel.aggregate(pipeline).exec();
+    const result = await this.certModel.aggregate(pipeline).exec();
+
+    console.log(result);
+
+    return result;
   }
 
   async getPopularCerts() {
