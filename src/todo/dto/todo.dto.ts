@@ -4,12 +4,13 @@ import {
   IsOptional,
   IsString,
   IsBoolean,
+  ValidateNested,
+  IsArray,
+  ArrayMinSize,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
-export class CreateTodoDto {
-  @IsDateString()
-  scheduledDate: string;
-
+export class TodoInput {
   @IsString()
   @IsNotEmpty()
   content: string;
@@ -19,6 +20,26 @@ export class CreateTodoDto {
   isComplete?: boolean;
 }
 
+export class MemoInput {
+  @IsString()
+  @IsNotEmpty()
+  content: string;
+}
+
+export class CreateTodoDto {
+  @IsDateString()
+  scheduledDate: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => TodoInput)
+  todos: TodoInput[];
+
+  @ValidateNested()
+  @Type(() => MemoInput)
+  memo: MemoInput;
+}
 export class UpdateTodoDto {
   @IsOptional()
   @IsDateString()

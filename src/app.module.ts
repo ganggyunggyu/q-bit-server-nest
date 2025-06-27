@@ -7,6 +7,7 @@ import { UserModule } from './user/user.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CertModule } from './cert/cert.module';
 import { TodoModule } from './todo/todo.module';
+import { MemoModule } from './memo/memo.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { TodoModule } from './todo/todo.module';
     UserModule,
     CertModule,
     TodoModule,
+    MemoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

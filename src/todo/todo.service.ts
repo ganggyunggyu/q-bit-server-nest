@@ -1,79 +1,110 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { Memo, MemoDocument } from '../memo/schema'; // 경로 맞게 수정
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
 import { Todo, TodoDocument } from './schema';
-import { CreateTodoDto, UpdateTodoDto } from './dto';
+import { Model } from 'mongoose';
+import { CreateTodoDto } from './dto';
+import { Types } from 'mongoose';
 
 @Injectable()
 export class TodoService {
   constructor(
     @InjectModel(Todo.name) private readonly todoModel: Model<TodoDocument>,
+    @InjectModel(Memo.name) private readonly memoModel: Model<MemoDocument>,
   ) {}
 
-  /**
-   * Todo 생성
-   */
-  async create(userId: Types.ObjectId, dto: CreateTodoDto): Promise<Todo> {
-    const newTodo = new this.todoModel({
+  async create(userId: Types.ObjectId, dto: CreateTodoDto): Promise<Todo[]> {
+    const { scheduledDate, todos, memo } = dto;
+    const createdTodos = await Promise.all(
+      todos.map((t) =>
+        this.todoModel.create({
+          userId,
+          scheduledDate,
+          content: t.content,
+          isComplete: t.isComplete ?? false,
+        }),
+      ),
+    );
+    await this.memoModel.create({
       userId,
-      scheduledDate: dto.scheduledDate,
-      content: dto.content,
-      isComplete: dto.isComplete ?? false,
+      scheduledDate,
+      content: memo.content,
     });
-    return await newTodo.save();
+
+    return createdTodos;
   }
 
-  /**
-   * 내 Todo 전체 가져오기 (optional: 특정 날짜만)
-   */
-  async findAll(userId: Types.ObjectId, scheduledDate?: Date): Promise<Todo[]> {
-    const query: any = { userId };
+  async findAll(userId: Types.ObjectId) {
+    const todos = await this.todoModel.find({ userId }).lean();
+    const memos = await this.memoModel.find({ userId }).lean();
 
-    if (scheduledDate) {
-      // 같은 날짜만 필터: 날짜만 비교 (00:00 ~ 23:59)
-      const start = new Date(scheduledDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(scheduledDate);
-      end.setHours(23, 59, 59, 999);
-      query.scheduledDate = { $gte: start, $lte: end };
+    const grouped: Record<string, { todos: Todo[]; memo: Memo | null }> = {};
+
+    for (const todo of todos) {
+      const key = todo.scheduledDate.toISOString().split('T')[0];
+      grouped[key] = grouped[key] || { todos: [], memo: null };
+      grouped[key].todos.push(todo);
     }
 
-    return this.todoModel.find(query).sort({ scheduledDate: 1 }).exec();
+    for (const memo of memos) {
+      const key = memo.scheduledDate.toISOString().split('T')[0];
+      grouped[key] = grouped[key] || { todos: [], memo: null };
+      grouped[key].memo = memo;
+    }
+
+    return Object.entries(grouped).map(([date, { todos, memo }]) => ({
+      scheduledDate: date,
+      todos,
+      memo,
+    }));
   }
 
-  /**
-   * Todo 하나 가져오기
-   */
-  async findOne(userId: Types.ObjectId, id: string): Promise<Todo> {
-    const todo = await this.todoModel.findOne({ _id: id, userId }).exec();
-    if (!todo) throw new NotFoundException('Todo not found');
-    return todo;
-  }
+  async findDate(userId: Types.ObjectId, date: Date) {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
 
-  /**
-   * Todo 수정
-   */
-  async update(
-    userId: Types.ObjectId,
-    id: string,
-    dto: UpdateTodoDto,
-  ): Promise<Todo> {
-    const updated = await this.todoModel
-      .findOneAndUpdate({ _id: id, userId }, dto, {
-        new: true,
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const todos = await this.todoModel
+      .find({
+        userId,
+        scheduledDate: { $gte: start, $lte: end },
       })
-      .exec();
-    if (!updated) throw new NotFoundException('Todo not found');
-    return updated;
+      .lean();
+
+    const memo = await this.memoModel
+      .findOne({
+        userId,
+        scheduledDate: { $gte: start, $lte: end },
+      })
+      .lean();
+
+    return {
+      scheduledDate: start.toISOString().split('T')[0],
+      todos,
+      memo,
+    };
   }
 
-  /**
-   * Todo 삭제
-   */
-  async remove(userId: Types.ObjectId, id: string): Promise<void> {
-    const deleted = await this.todoModel
-      .findOneAndDelete({ _id: id, userId })
-      .exec();
-    if (!deleted) throw new NotFoundException('Todo not found');
+  async hasEntryForDate(userId: Types.ObjectId, date: Date): Promise<boolean> {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const [todoCount, memoCount] = await Promise.all([
+      this.todoModel.countDocuments({
+        userId,
+        scheduledDate: { $gte: start, $lte: end },
+      }),
+      this.memoModel.countDocuments({
+        userId,
+        scheduledDate: { $gte: start, $lte: end },
+      }),
+    ]);
+
+    return todoCount > 0 || memoCount > 0;
   }
 }
