@@ -39,6 +39,12 @@ export class TodoController {
     return this.todoService.findDate(user._id, new Date(date));
   }
 
+  @Get('week')
+  @ApiOperation({ summary: '이번 주 TODO 리스트 전체 조회 (일요일~토요일)' })
+  async getThisWeekTodos(@CurrentUser() user) {
+    return this.todoService.findThisWeekRange(user._id);
+  }
+
   @Get('exists')
   @ApiQuery({ name: 'date', required: true, example: '2025-06-27' })
   @ApiOperation({ summary: '해당 날짜에 투두/메모가 이미 존재하는지 여부' })

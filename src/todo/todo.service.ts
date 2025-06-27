@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Memo, MemoDocument } from '../memo/schema'; // 경로 맞게 수정
+import { Memo, MemoDocument } from '../memo/schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Todo, TodoDocument } from './schema';
 import { Model } from 'mongoose';
@@ -64,7 +64,7 @@ export class TodoService {
       console.log(date);
       return {
         scheduledDate,
-        scheduledDateStr: date, // YYYY-MM-DD 그대로
+        scheduledDateStr: date,
         todos,
         memo,
       };
@@ -110,10 +110,80 @@ export class TodoService {
       .lean();
 
     return {
-      scheduledDate: start.toISOString().split('T')[0], // '2025-06-27'
+      scheduledDate: start.toISOString().split('T')[0],
       todos,
       memo,
     };
+  }
+
+  async findThisWeekRange(userId: Types.ObjectId) {
+    const today = new Date();
+    const todayKST = new Date(today.getTime() + 9 * 60 * 60 * 1000);
+    const dayOfWeek = todayKST.getUTCDay();
+
+    const start = new Date(
+      Date.UTC(
+        todayKST.getUTCFullYear(),
+        todayKST.getUTCMonth(),
+        todayKST.getUTCDate() - dayOfWeek,
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+
+    const end = new Date(
+      Date.UTC(
+        start.getUTCFullYear(),
+        start.getUTCMonth(),
+        start.getUTCDate() + 6,
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+
+    const todos = await this.todoModel
+      .find({
+        userId,
+        scheduledDate: { $gte: start, $lte: end },
+      })
+      .lean();
+
+    const memos = await this.memoModel
+      .find({
+        userId,
+        scheduledDate: { $gte: start, $lte: end },
+      })
+      .lean();
+
+    const grouped: Record<string, { todos: Todo[]; memo: Memo | null }> = {};
+
+    for (const todo of todos) {
+      const key = todo.scheduledDate.toISOString().split('T')[0];
+      grouped[key] = grouped[key] || { todos: [], memo: null };
+      grouped[key].todos.push(todo);
+    }
+
+    for (const memo of memos) {
+      const key = memo.scheduledDate.toISOString().split('T')[0];
+      grouped[key] = grouped[key] || { todos: [], memo: null };
+      grouped[key].memo = memo;
+    }
+
+    return Object.entries(grouped).map(([date, { todos, memo }]) => {
+      const [year, month, day] = date.split('-').map(Number);
+      const scheduledDate = new Date(Date.UTC(year, month - 1, day));
+
+      return {
+        scheduledDate,
+        scheduledDateStr: date,
+        todos,
+        memo,
+      };
+    });
   }
 
   async hasEntryForDate(userId: Types.ObjectId, date: Date): Promise<boolean> {
