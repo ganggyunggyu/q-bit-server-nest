@@ -11,12 +11,22 @@ async function bootstrap() {
     .setTitle('Qbit API Docs')
     .setDescription('Qbit API Docs')
     .setVersion('1.0')
-    .addCookieAuth('accessToken')
-    .addCookieAuth('refreshToken')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: 'Access token',
+        in: 'header',
+      },
+      'accessToken',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
+
   app.enableCors({
     origin: true,
     credentials: true,
