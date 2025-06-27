@@ -58,6 +58,12 @@ export class AuthController {
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
       });
+
+      console.log(
+        accessToken,
+        refreshToken,
+        process.env.NODE_ENV === 'production',
+      );
       return res.redirect(`${clientURL}/?isAuth=true`);
     }
 

@@ -15,6 +15,10 @@ export class TodoService {
 
   async create(userId: Types.ObjectId, dto: CreateTodoDto): Promise<Todo[]> {
     const { scheduledDate, todos, memo } = dto;
+
+    console.log(dto.todos);
+    await this.todoModel.deleteMany({ userId, scheduledDate });
+
     const createdTodos = await Promise.all(
       todos.map((t) =>
         this.todoModel.create({
@@ -25,11 +29,12 @@ export class TodoService {
         }),
       ),
     );
-    await this.memoModel.create({
-      userId,
-      scheduledDate,
-      content: memo.content,
-    });
+
+    await this.memoModel.findOneAndUpdate(
+      { userId, scheduledDate },
+      { content: memo.content },
+      { upsert: true, new: true },
+    );
 
     return createdTodos;
   }
@@ -52,19 +57,43 @@ export class TodoService {
       grouped[key].memo = memo;
     }
 
-    return Object.entries(grouped).map(([date, { todos, memo }]) => ({
-      scheduledDate: date,
-      todos,
-      memo,
-    }));
+    return Object.entries(grouped).map(([date, { todos, memo }]) => {
+      const [year, month, day] = date.split('-').map(Number);
+      const scheduledDate = new Date(Date.UTC(year, month - 1, day));
+      console.log(scheduledDate);
+      console.log(date);
+      return {
+        scheduledDate,
+        scheduledDateStr: date, // YYYY-MM-DD 그대로
+        todos,
+        memo,
+      };
+    });
   }
 
   async findDate(userId: Types.ObjectId, date: Date) {
-    const start = new Date(date);
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(date);
-    end.setHours(23, 59, 59, 999);
+    const start = new Date(
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+    const end = new Date(
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
 
     const todos = await this.todoModel
       .find({
@@ -81,7 +110,7 @@ export class TodoService {
       .lean();
 
     return {
-      scheduledDate: start.toISOString().split('T')[0],
+      scheduledDate: start.toISOString().split('T')[0], // '2025-06-27'
       todos,
       memo,
     };
