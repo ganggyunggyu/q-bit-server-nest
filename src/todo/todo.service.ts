@@ -116,16 +116,12 @@ export class TodoService {
     };
   }
 
-  async findThisWeekRange(userId: Types.ObjectId) {
-    const today = new Date();
-    const todayKST = new Date(today.getTime() + 9 * 60 * 60 * 1000);
-    const dayOfWeek = todayKST.getUTCDay();
-
+  async findWeekRangeFromSunday(userId: Types.ObjectId, sundayDate: Date) {
     const start = new Date(
       Date.UTC(
-        todayKST.getUTCFullYear(),
-        todayKST.getUTCMonth(),
-        todayKST.getUTCDate() - dayOfWeek,
+        sundayDate.getFullYear(),
+        sundayDate.getMonth(),
+        sundayDate.getDate(),
         0,
         0,
         0,
@@ -173,19 +169,25 @@ export class TodoService {
       grouped[key].memo = memo;
     }
 
-    return Object.entries(grouped).map(([date, { todos, memo }]) => {
-      const [year, month, day] = date.split('-').map(Number);
-      const scheduledDate = new Date(Date.UTC(year, month - 1, day));
+    return Array.from({ length: 7 }).map((_, i) => {
+      const current = new Date(
+        Date.UTC(
+          start.getUTCFullYear(),
+          start.getUTCMonth(),
+          start.getUTCDate() + i,
+        ),
+      );
+      const key = current.toISOString().split('T')[0];
+      const { todos = [], memo = null } = grouped[key] || {};
 
       return {
-        scheduledDate,
-        scheduledDateStr: date,
+        scheduledDate: current,
+        scheduledDateStr: key,
         todos,
         memo,
       };
     });
   }
-
   async hasEntryForDate(userId: Types.ObjectId, date: Date): Promise<boolean> {
     const start = new Date(date);
     start.setHours(0, 0, 0, 0);
@@ -206,4 +208,6 @@ export class TodoService {
 
     return todoCount > 0 || memoCount > 0;
   }
+
+  async getTodoPercentage() {}
 }

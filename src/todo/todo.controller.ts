@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBody,
   ApiCookieAuth,
@@ -40,9 +48,25 @@ export class TodoController {
   }
 
   @Get('week')
-  @ApiOperation({ summary: '이번 주 TODO 리스트 전체 조회 (일요일~토요일)' })
-  async getThisWeekTodos(@CurrentUser() user) {
-    return this.todoService.findThisWeekRange(user._id);
+  @ApiOperation({
+    summary: '지정한 주간의 TODO 리스트 전체 조회 (일요일~토요일)',
+  })
+  @ApiQuery({
+    name: 'sunday',
+    required: true,
+    description: '해당 주의 시작일 (일요일), 형식: YYYY-MM-DD',
+    example: '2025-06-29',
+  })
+  async getWeekTodos(@CurrentUser() user, @Query('sunday') sundayStr: string) {
+    const sundayDate = new Date(sundayStr);
+
+    if (isNaN(sundayDate.getTime())) {
+      throw new BadRequestException(
+        '유효한 날짜 형식이 아닙니다. YYYY-MM-DD로 입력해주세요.',
+      );
+    }
+
+    return this.todoService.findWeekRangeFromSunday(user._id, sundayDate);
   }
 
   @Get('exists')
