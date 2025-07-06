@@ -140,8 +140,8 @@ export class CertController {
   })
   @ApiBearerAuth('accessToken')
   @UseGuards(JwtAuthGuard)
-  async getMyRemindCerts(@CurrentUser() user) {
-    return this.certService.getMyRemindCerts(user._id);
+  async getMyRemindCerts(@CurrentUser() user: { _id: Types.ObjectId }) {
+    return this.certService.getMyRemindCerts(user._id.toString());
   }
 
   @Post('/remind/:id')
@@ -156,8 +156,11 @@ export class CertController {
   })
   @ApiBearerAuth('accessToken')
   @UseGuards(JwtAuthGuard)
-  async addRemindCert(@CurrentUser() user, @Param('id') id: string) {
-    return this.certService.addRemindCert(user._id, id);
+  async addRemindCert(
+    @CurrentUser() user: { _id: Types.ObjectId },
+    @Param('id') id: string,
+  ) {
+    return this.certService.addRemindCert(user._id.toString(), id);
   }
 
   @Delete('/remind/:id')
@@ -172,7 +175,10 @@ export class CertController {
   })
   @ApiBearerAuth('accessToken')
   @UseGuards(JwtAuthGuard)
-  async removeRemindCert(@CurrentUser() user, @Param('id') id: string) {
-    return this.certService.removeRemindCert(user._id, id);
+  async removeRemindCert(
+    @CurrentUser() user: { _id: Types.ObjectId },
+    @Param('id') id: string,
+  ) {
+    return this.certService.removeRemindCert(user._id.toString(), id);
   }
 }

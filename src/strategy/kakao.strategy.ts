@@ -7,11 +7,11 @@ import { AuthService } from 'src/auth/auth.service';
 
 export const extractKakaoProfile = (profile: Profile): newUser => {
   const kakaoId = profile.id.toString();
-  const email = profile._json.kakao_account?.email || 'temp@temp.com';
+  const email = profile._json?.kakao_account?.email || 'temp@temp.com';
   const displayName = profile.displayName;
   const profileImage =
-    profile._json.properties?.profile_image ||
-    profile._json.kakao_account?.profile?.profile_image_url ||
+    profile._json?.properties?.profile_image ||
+    profile._json?.kakao_account?.profile?.profile_image_url ||
     '';
 
   return {
@@ -50,7 +50,7 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
   }
 
   async validate(accessToken: string, refreshToken: string, profile: Profile) {
-    const userData = extractKakaoProfile(profile);
+    const userData: newUser = extractKakaoProfile(profile);
 
     const existingUser = await this.userService.findByKakaoId(userData.kakaoId);
 

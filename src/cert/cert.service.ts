@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cert, CertDocument } from './schema/cert.schema';
 import { User, UserDocument } from 'src/user/schema/user.schema';
-import mongoose, { Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { shuffle } from 'es-toolkit';
 
 @Injectable()
@@ -20,7 +20,14 @@ export class CertService {
     obligfldnm?: string;
     mdobligfldnm?: string;
   }) {
-    const query: any = {};
+    interface CertSearchQuery {
+      jmfldnm?: { $regex: string; $options: string };
+      agency?: string;
+      seriesnm?: string;
+      obligfldnm?: string;
+      mdobligfldnm?: string;
+    }
+    const query: CertSearchQuery = {};
 
     if (filters.keyword) {
       query.jmfldnm = { $regex: filters.keyword, $options: 'i' };
@@ -56,7 +63,7 @@ export class CertService {
       },
     ];
 
-    const result = await this.certModel.aggregate(pipeline).exec();
+    const result: Cert[] = await this.certModel.aggregate(pipeline).exec();
 
     console.log(result);
 
@@ -90,7 +97,7 @@ export class CertService {
     const now = new Date();
     const oneWeekFromNow = new Date();
     oneWeekFromNow.setDate(now.getDate() + 7);
-    const result = await this.certModel
+    const result: Cert[] = await this.certModel
       .aggregate([
         { $unwind: '$schedule' },
 

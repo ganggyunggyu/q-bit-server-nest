@@ -64,7 +64,7 @@ describe('AuthController', () => {
       .overrideGuard(AuthGuard('jwt'))
       .useValue({
         canActivate: (context: ExecutionContext) => {
-          const request = context.switchToHttp().getRequest() as MockRequest;
+          const request = context.switchToHttp().getRequest();
           request.user = { _id: new Types.ObjectId() }; // Mock user
           return true;
         },

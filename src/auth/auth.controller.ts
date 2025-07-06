@@ -36,17 +36,25 @@ export class AuthController {
     description:
       '카카오 로그인 성공 시 신규 유저는 온보딩 페이지로, 기존 유저는 쿠키 설정 후 홈으로 리다이렉트',
   })
-  async kakaoCallback(@Req() req: Request, @Res() res: Response) {
+  kakaoCallback(@Req() req: Request, @Res() res: Response) {
     const clientURL =
       this.configService.get<string>('CLIENT_URL') || 'http://localhost:5173';
-    const user = req.user as any;
+    const user = req.user as {
+      isNewUser: boolean;
+      kakaoId: string;
+      email: string;
+      displayName: string;
+      _id: Types.ObjectId;
+    };
 
     if (user.isNewUser) {
       const onboardingURL = `${clientURL}/onboarding-1?kakaoId=${user.kakaoId}&email=${user.email}&displayName=${encodeURIComponent(user.displayName)}`;
 
       return res.redirect(onboardingURL);
     } else if (user) {
-      const { accessToken, refreshToken } = this.authService.getJWT(user._id);
+      const { accessToken, refreshToken } = this.authService.getJWT(
+        user._id.toString(),
+      );
       res.cookie('accessToken', accessToken, {
         httpOnly: true,
         sameSite: 'lax',
@@ -78,7 +86,7 @@ export class AuthController {
     description:
       '쿠키에 저장된 accessToken을 이용해 현재 로그인된 유저 정보를 조회',
   })
-  getMe(@CurrentUser() user) {
+  getMe(@CurrentUser() user: { _id: Types.ObjectId }) {
     return user;
   }
 
@@ -108,7 +116,7 @@ export class AuthController {
         throw new UnauthorizedException('유저 없음');
       }
 
-      const { accessToken } = await this.authService.getJWT(user._id as string);
+      const { accessToken } = this.authService.getJWT(user._id.toString());
 
       const cookieOptions: CookieOptions = {
         sameSite: 'lax',
