@@ -40,7 +40,7 @@ export class TodoController {
   @ApiBody({ type: CreateTodoDto })
   @Post()
   async create(
-    @CurrentUser() user: { _id: Types.ObjectId },
+    @CurrentUser() user: { _id: string },
     @Body() dto: CreateTodoDto,
   ) {
     const userId = user._id;
@@ -71,59 +71,17 @@ export class TodoController {
   })
   @Get()
   async findAll(
-    @CurrentUser() user: { _id: Types.ObjectId },
+    @CurrentUser() user: { _id: string },
     @Query() filterDto: GetTodosFilterDto,
   ) {
     return this.todoService.findAll(user._id, filterDto);
-  }
-
-  @ApiOperation({ summary: '특정 Todo 조회' })
-  @Get(':id')
-  async findOne(
-    @CurrentUser() user: { _id: Types.ObjectId },
-    @Param('id') id: string,
-  ) {
-    return this.todoService.findOne(user._id, id);
-  }
-
-  @ApiOperation({ summary: '특정 Todo 업데이트' })
-  @Patch(':id')
-  async update(
-    @CurrentUser() user: { _id: Types.ObjectId },
-    @Param('id') id: string,
-    @Body() updateTodoDto: UpdateTodoDto,
-  ) {
-    return this.todoService.update(user._id, id, updateTodoDto);
-  }
-
-  @ApiOperation({ summary: '특정 Todo 완료 상태 토글' })
-  @Patch(':id/complete')
-  async toggleComplete(
-    @CurrentUser() user: { _id: Types.ObjectId },
-    @Param('id') id: string,
-    @Body() updateTodoCompletionDto: UpdateTodoCompletionDto,
-  ) {
-    return this.todoService.toggleTodoCompletion(
-      user._id,
-      id,
-      updateTodoCompletionDto.isCompleted,
-    );
-  }
-
-  @ApiOperation({ summary: '특정 Todo 삭제' })
-  @Delete(':id')
-  async remove(
-    @CurrentUser() user: { _id: Types.ObjectId },
-    @Param('id') id: string,
-  ) {
-    return this.todoService.remove(user._id, id);
   }
 
   @ApiOperation({ summary: '특정 날짜의 Todo 조회' })
   @ApiQuery({ name: 'date', required: true, example: '2025-06-27' })
   @Get('date')
   async findByDate(
-    @CurrentUser() user: { _id: Types.ObjectId },
+    @CurrentUser() user: { _id: string },
     @Query('date') date: string,
   ) {
     return this.todoService.findDate(user._id, new Date(date));
@@ -140,7 +98,7 @@ export class TodoController {
     example: '2025-06-29',
   })
   async getWeekTodos(
-    @CurrentUser() user: { _id: Types.ObjectId },
+    @CurrentUser() user: { _id: string },
     @Query('sunday') sundayStr: string,
   ) {
     const sundayDate = new Date(sundayStr);
@@ -163,7 +121,7 @@ export class TodoController {
   })
   @ApiOperation({ summary: '해당 날짜에 투두가 이미 존재하는지 여부' })
   async exists(
-    @CurrentUser() user: { _id: Types.ObjectId },
+    @CurrentUser() user: { _id: string },
     @Query('date') date: string,
   ) {
     const exists = await this.todoService.hasEntryForDate(
@@ -187,10 +145,46 @@ export class TodoController {
     description: '조회할 월 (1-12)',
   })
   async getMonthTodos(
-    @CurrentUser() user: { _id: Types.ObjectId },
+    @CurrentUser() user: { _id: string },
     @Query('year', ParseIntPipe) year: number,
     @Query('month', ParseIntPipe) month: number,
   ) {
     return this.todoService.findMonth(user._id, month, year);
+  }
+
+  @ApiOperation({ summary: '특정 Todo 조회' })
+  @Get(':id')
+  async findOne(@CurrentUser() user: { _id: string }, @Param('id') id: string) {
+    return this.todoService.findOne(user._id, id);
+  }
+
+  @ApiOperation({ summary: '특정 Todo 업데이트' })
+  @Patch(':id')
+  async update(
+    @CurrentUser() user: { _id: string },
+    @Param('id') id: string,
+    @Body() updateTodoDto: UpdateTodoDto,
+  ) {
+    return this.todoService.update(user._id, id, updateTodoDto);
+  }
+
+  @ApiOperation({ summary: '특정 Todo 완료 상태 토글' })
+  @Patch(':id/complete')
+  async toggleComplete(
+    @CurrentUser() user: { _id: string },
+    @Param('id') id: string,
+    @Body() updateTodoCompletionDto: UpdateTodoCompletionDto,
+  ) {
+    return this.todoService.toggleTodoCompletion(
+      user._id,
+      id,
+      updateTodoCompletionDto.isCompleted,
+    );
+  }
+
+  @ApiOperation({ summary: '특정 Todo 삭제' })
+  @Delete(':id')
+  async remove(@CurrentUser() user: { _id: string }, @Param('id') id: string) {
+    return this.todoService.remove(user._id, id);
   }
 }

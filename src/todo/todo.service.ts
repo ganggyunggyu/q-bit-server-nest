@@ -11,7 +11,7 @@ export class TodoService {
     @InjectModel(Todo.name) private readonly todoModel: Model<TodoDocument>,
   ) {}
 
-  async create(userId: Types.ObjectId, dto: CreateTodoDto): Promise<Todo[]> {
+  async create(userId: string, dto: CreateTodoDto): Promise<Todo[]> {
     const { date, todos } = dto;
 
     await this.todoModel.deleteMany({ userId, date });
@@ -31,7 +31,7 @@ export class TodoService {
     return createdTodos;
   }
 
-  async findAll(userId: Types.ObjectId, filterDto: GetTodosFilterDto) {
+  async findAll(userId: string, filterDto: GetTodosFilterDto) {
     const { date, isCompleted, search } = filterDto;
     const query: FilterQuery<Todo> = { userId };
 
@@ -74,7 +74,7 @@ export class TodoService {
     });
   }
 
-  async findOne(userId: Types.ObjectId, todoId: string): Promise<Todo> {
+  async findOne(userId: string, todoId: string): Promise<Todo> {
     const todo = await this.todoModel.findOne({ _id: todoId, userId }).lean();
     if (!todo) {
       throw new NotFoundException(
@@ -84,7 +84,7 @@ export class TodoService {
     return todo;
   }
 
-  async findDate(userId: Types.ObjectId, date: Date) {
+  async findDate(userId: string, date: Date) {
     const start = new Date(
       Date.UTC(
         date.getUTCFullYear(),
@@ -121,7 +121,7 @@ export class TodoService {
     };
   }
 
-  async findWeekRangeFromSunday(userId: Types.ObjectId, sundayDate: Date) {
+  async findWeekRangeFromSunday(userId: string, sundayDate: Date) {
     const start = new Date(
       Date.UTC(
         sundayDate.getFullYear(),
@@ -180,7 +180,7 @@ export class TodoService {
     });
   }
 
-  async findMonth(userId: Types.ObjectId, month: number, year: number) {
+  async findMonth(userId: string, month: number, year: number) {
     const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
     const end = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
 
@@ -213,7 +213,7 @@ export class TodoService {
       };
     });
   }
-  async hasEntryForDate(userId: Types.ObjectId, date: Date): Promise<boolean> {
+  async hasEntryForDate(userId: string, date: Date): Promise<boolean> {
     const start = new Date(date);
     start.setHours(0, 0, 0, 0);
 
@@ -229,7 +229,7 @@ export class TodoService {
   }
 
   async update(
-    userId: Types.ObjectId,
+    userId: string,
     todoId: string,
     updateTodoDto: UpdateTodoDto,
   ): Promise<Todo> {
@@ -257,7 +257,7 @@ export class TodoService {
     return updatedTodo;
   }
 
-  async remove(userId: Types.ObjectId, todoId: string): Promise<void> {
+  async remove(userId: string, todoId: string): Promise<void> {
     const result = await this.todoModel
       .deleteOne({ _id: todoId, userId })
       .exec();
@@ -269,7 +269,7 @@ export class TodoService {
   }
 
   async toggleTodoCompletion(
-    userId: Types.ObjectId,
+    userId: string,
     todoId: string,
     isCompleted: boolean,
   ): Promise<Todo> {
