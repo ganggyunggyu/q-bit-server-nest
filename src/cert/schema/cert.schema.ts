@@ -40,6 +40,9 @@ export class Cert {
 
   @Prop()
   agency?: string;
+
+  @Prop({ type: [Object] })
+  schedule?: any[];
 }
 
 export const CertSchema = SchemaFactory.createForClass(Cert);
