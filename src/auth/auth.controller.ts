@@ -18,7 +18,7 @@ import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserService } from 'src/user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { JoinUserRequest } from 'src/user/dto';
-
+import { Types } from 'mongoose';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
@@ -116,7 +116,7 @@ export class AuthController {
         throw new UnauthorizedException('유저 없음');
       }
 
-      const { accessToken } = this.authService.getJWT(user._id.toString());
+      const { accessToken } = this.authService.getJWT(user._id!.toString());
 
       const cookieOptions: CookieOptions = {
         sameSite: 'lax',

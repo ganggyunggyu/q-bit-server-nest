@@ -18,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from 'src/user/decorator/user.decorator';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { Types } from 'mongoose';
 
 @ApiTags('자격증') // 그룹 이름
 @Controller('cert')

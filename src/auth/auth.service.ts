@@ -40,7 +40,7 @@ export class AuthService {
   async join(user: JoinUserRequest): Promise<UserDocument> {
     return this.userModel.create(user);
   }
-  logout(): Promise<{ message: string }> {
+  logout(): { message: string } {
     return { message: '로그아웃 완료' };
   }
 }
