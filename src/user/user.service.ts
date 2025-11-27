@@ -17,11 +17,7 @@ export class UserService {
     return this.userModel.create(user);
   }
 
-  async findById(userId: string) {
-    const user = await this.userModel.findById(userId).exec();
-
-    if (user) {
-      return user;
-    }
+  async findById(userId: string): Promise<UserDocument | null> {
+    return this.userModel.findById(userId).exec();
   }
 }

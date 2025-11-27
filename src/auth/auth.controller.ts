@@ -19,6 +19,7 @@ import { UserService } from 'src/user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { JoinUserRequest } from 'src/user/dto';
 import { Types } from 'mongoose';
+
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
@@ -29,7 +30,15 @@ export class AuthController {
     private readonly userService: UserService,
   ) {}
 
-  @Get('kakao-callback')
+  private getCookieOptions(): CookieOptions {
+    return {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: this.configService.get<string>('NODE_ENV') === 'production',
+    };
+  }
+
+  @Get('kakao/callback')
   @UseGuards(AuthGuard('kakao'))
   @ApiOperation({
     summary: '카카오 로그인 콜백',
@@ -55,23 +64,11 @@ export class AuthController {
       const { accessToken, refreshToken } = this.authService.getJWT(
         user._id.toString(),
       );
-      res.cookie('accessToken', accessToken, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-      });
+      const cookieOptions = this.getCookieOptions();
 
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-      });
+      res.cookie('accessToken', accessToken, cookieOptions);
+      res.cookie('refreshToken', refreshToken, cookieOptions);
 
-      console.log(
-        accessToken,
-        refreshToken,
-        process.env.NODE_ENV === 'production',
-      );
       return res.redirect(`${clientURL}/?isAuth=true`);
     }
 
@@ -118,17 +115,10 @@ export class AuthController {
 
       const { accessToken } = this.authService.getJWT(user._id!.toString());
 
-      const cookieOptions: CookieOptions = {
-        sameSite: 'lax',
-        secure: false,
-        httpOnly: true,
-      };
+      res.cookie('accessToken', accessToken, this.getCookieOptions());
 
-      res.cookie('accessToken', accessToken, cookieOptions);
-      console.log('새 accessToken 발급:', accessToken);
       return res.status(200).send({ message: 'accessToken 재발급 완료' });
-    } catch (error) {
-      console.error('refreshToken 검증 실패:', error);
+    } catch {
       throw new UnauthorizedException('리프레시 토큰 검증 실패');
     }
   }
@@ -148,22 +138,15 @@ export class AuthController {
     const { accessToken, refreshToken } = this.authService.getJWT(
       user._id!.toString(),
     );
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-    });
+    const cookieOptions = this.getCookieOptions();
 
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-    });
+    res.cookie('accessToken', accessToken, cookieOptions);
+    res.cookie('refreshToken', refreshToken, cookieOptions);
 
-    return {
+    return res.status(201).json({
       message: '회원가입 완료',
       user,
-    };
+    });
   }
 
   @Delete('logout')
@@ -172,11 +155,7 @@ export class AuthController {
     description: '쿠키에서 accessToken, refreshToken 제거 후 로그아웃 처리',
   })
   async logout(@Res() res: Response) {
-    const cookieOptions: CookieOptions = {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-    };
+    const cookieOptions = this.getCookieOptions();
 
     res.clearCookie('accessToken', cookieOptions);
     res.clearCookie('refreshToken', cookieOptions);

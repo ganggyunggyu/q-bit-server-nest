@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
+import { ConfigService } from '@nestjs/config';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../user/schema/user.schema';
 import { JoinUserRequest } from 'src/user/dto';
@@ -10,6 +11,7 @@ export class AuthService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   async findByKakaoId(kakaoId: string): Promise<UserDocument | null> {
@@ -24,13 +26,15 @@ export class AuthService {
 
   getJWT(userId: string) {
     const payload = { sub: userId };
+    const secret = this.configService.get<string>('JWT_SECRET');
+
     const accessToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET,
+      secret,
       expiresIn: '1h',
     });
 
     const refreshToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET,
+      secret,
       expiresIn: '7d',
     });
 

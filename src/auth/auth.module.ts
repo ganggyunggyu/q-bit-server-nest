@@ -11,15 +11,18 @@ import { KakaoStrategy } from 'src/strategy/kakao.strategy';
 import { User, UserSchema } from 'src/user/schema/user.schema';
 import { UserModule } from 'src/user/user.module';
 import { JwtStrategy } from 'src/strategy/jwt.strategy';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
     PassportModule.register({ session: false }),
-    JwtModule.register({
-      // secret: process.env.JWT_SECRET,
-      secret: 'secret',
-      signOptions: { expiresIn: '1h' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '1h' },
+      }),
+      inject: [ConfigService],
     }),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     ConfigModule,
