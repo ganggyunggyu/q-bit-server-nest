@@ -1,34 +1,44 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Todo, TodoDocument } from './schema';
-import { FilterQuery, Model, UpdateQuery } from 'mongoose';
+import { Connection, FilterQuery, Model, UpdateQuery } from 'mongoose';
 import { CreateTodoDto, GetTodosFilterDto, UpdateTodoDto } from './dto';
-import { Types } from 'mongoose';
 
 @Injectable()
 export class TodoService {
   constructor(
     @InjectModel(Todo.name) private readonly todoModel: Model<TodoDocument>,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
 
   async create(userId: string, dto: CreateTodoDto): Promise<Todo[]> {
     const { date, todos } = dto;
+    const session = await this.connection.startSession();
 
-    await this.todoModel.deleteMany({ userId, date });
+    try {
+      session.startTransaction();
 
-    const createdTodos = await Promise.all(
-      todos.map((t) =>
-        this.todoModel.create({
+      await this.todoModel.deleteMany({ userId, date }, { session });
+
+      const createdTodos = await this.todoModel.insertMany(
+        todos.map((t) => ({
           userId,
           date,
           title: t.title,
           description: t.description,
           isCompleted: t.isCompleted ?? false,
-        }),
-      ),
-    );
+        })),
+        { session },
+      );
 
-    return createdTodos;
+      await session.commitTransaction();
+      return createdTodos;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      void session.endSession();
+    }
   }
 
   async findAll(userId: string, filterDto: GetTodosFilterDto) {
@@ -64,8 +74,7 @@ export class TodoService {
     return Object.entries(grouped).map(([date, { todos }]) => {
       const [year, month, day] = date.split('-').map(Number);
       const scheduledDate = new Date(Date.UTC(year, month - 1, day));
-      console.log(scheduledDate);
-      console.log(date);
+
       return {
         scheduledDate,
         scheduledDateStr: date,
