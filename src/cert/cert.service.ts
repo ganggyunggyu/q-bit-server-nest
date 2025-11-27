@@ -25,10 +25,10 @@ export class CertService {
                     as: 's',
                     cond: {
                       $and: [
-                        { $ne: [{ $type: '$$s.docexamdt' }, 'missing'] },
+                        { $ne: [{ $type: '$$s.writtenExamStart' }, 'missing'] },
                         {
                           $regexMatch: {
-                            input: '$$s.docexamdt',
+                            input: '$$s.writtenExamStart',
                             regex: '^[0-9]{8}$',
                           },
                         },
@@ -36,7 +36,7 @@ export class CertService {
                           $gte: [
                             {
                               $dateFromString: {
-                                dateString: '$$s.docexamdt',
+                                dateString: '$$s.writtenExamStart',
                                 format: '%Y%m%d',
                               },
                             },
@@ -50,7 +50,7 @@ export class CertService {
                 as: 'futureSchedule',
                 in: {
                   $dateFromString: {
-                    dateString: '$$futureSchedule.docexamdt',
+                    dateString: '$$futureSchedule.writtenExamStart',
                     format: '%Y%m%d',
                   },
                 },
@@ -74,6 +74,18 @@ export class CertService {
               else: null,
             },
           },
+          hasSchedule: {
+            $cond: {
+              if: {
+                $and: [
+                  { $isArray: '$schedule' },
+                  { $gt: [{ $size: '$schedule' }, 0] },
+                ],
+              },
+              then: true,
+              else: false,
+            },
+          },
         },
       },
       {
@@ -87,16 +99,17 @@ export class CertService {
   async searchCerts(filters: {
     keyword?: string;
     agency?: string;
-    seriesnm?: string;
-    obligfldnm?: string;
-    mdobligfldnm?: string;
+    grade?: string;
+    category?: string;
+    subCategory?: string;
   }) {
     const query: any = {};
-    if (filters.keyword) query.jmfldnm = { $regex: filters.keyword, $options: 'i' };
+    if (filters.keyword)
+      query.name = { $regex: filters.keyword, $options: 'i' };
     if (filters.agency) query.agency = filters.agency;
-    if (filters.seriesnm) query.seriesnm = filters.seriesnm;
-    if (filters.obligfldnm) query.obligfldnm = filters.obligfldnm;
-    if (filters.mdobligfldnm) query.mdobligfldnm = filters.mdobligfldnm;
+    if (filters.grade) query.grade = filters.grade;
+    if (filters.category) query.category = filters.category;
+    if (filters.subCategory) query.subCategory = filters.subCategory;
 
     const pipeline = [{ $match: query }, ...this.daysLeftCalculationPipeline];
     return this.certModel.aggregate(pipeline).exec();
@@ -114,11 +127,11 @@ export class CertService {
     return result[0];
   }
 
-  async getSearchCertByJmnm(keyword: string, limit = 10): Promise<Cert[]> {
+  async searchCertsByName(keyword: string, limit = 10): Promise<Cert[]> {
     const pipeline = [
       {
         $search: {
-          index: 'jmnm_search_index',
+          index: 'cert_name_search_index',
           text: { query: keyword, path: { wildcard: '*' } },
         },
       },
@@ -130,16 +143,21 @@ export class CertService {
 
   async getPopularCerts() {
     const targetIds = [
-      '68529189514e0802729cff70', '685208c24e8e01f9f2534f9d',
-      '685208c34e8e01f9f2534faa', '685208c34e8e01f9f2534fab',
-      '685208be4e8e01f9f2534f4d', '685208ba4e8e01f9f2534f07',
-      '685208c54e8e01f9f2534fd6', '685208cd4e8e01f9f2535078',
-      '685208bb4e8e01f9f2534f12', '685299ff514e0802729cff73',
-    ].map(id => new Types.ObjectId(id));
+      '68529189514e0802729cff70',
+      '685208c24e8e01f9f2534f9d',
+      '685208c34e8e01f9f2534faa',
+      '685208c34e8e01f9f2534fab',
+      '685208be4e8e01f9f2534f4d',
+      '685208ba4e8e01f9f2534f07',
+      '685208c54e8e01f9f2534fd6',
+      '685208cd4e8e01f9f2535078',
+      '685208bb4e8e01f9f2534f12',
+      '685299ff514e0802729cff73',
+    ].map((id) => new Types.ObjectId(id));
 
     const pipeline = [
-        { $match: { _id: { $in: targetIds } } },
-        ...this.daysLeftCalculationPipeline
+      { $match: { _id: { $in: targetIds } } },
+      ...this.daysLeftCalculationPipeline,
     ];
 
     const certs = await this.certModel.aggregate(pipeline).exec();
@@ -153,16 +171,21 @@ export class CertService {
     oneWeekFromNow.setDate(now.getDate() + 7);
 
     const pipeline = [
-        { $unwind: '$schedule' },
-        { $match: { 'schedule.docexamdt': { $regex: /^[0-9]{8}$/ } } },
-        {
-            $addFields: {
-                scheduleDate: { $dateFromString: { dateString: '$schedule.docexamdt', format: '%Y%m%d' } }
-            }
+      { $unwind: '$schedule' },
+      { $match: { 'schedule.writtenExamStart': { $regex: /^[0-9]{8}$/ } } },
+      {
+        $addFields: {
+          scheduleDate: {
+            $dateFromString: {
+              dateString: '$schedule.writtenExamStart',
+              format: '%Y%m%d',
+            },
+          },
         },
-        { $match: { scheduleDate: { $gte: now, $lte: oneWeekFromNow } } },
-        ...this.daysLeftCalculationPipeline,
-        { $limit: limit },
+      },
+      { $match: { scheduleDate: { $gte: now, $lte: oneWeekFromNow } } },
+      ...this.daysLeftCalculationPipeline,
+      { $limit: limit },
     ];
 
     return this.certModel.aggregate(pipeline).exec();

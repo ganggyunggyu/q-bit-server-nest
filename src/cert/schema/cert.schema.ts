@@ -3,46 +3,48 @@ import { Document } from 'mongoose';
 
 export type CertDocument = Cert & Document;
 
+export interface CertSchedule {
+  round: string;
+  writtenRegStart?: string;
+  writtenRegEnd?: string;
+  writtenExamStart?: string;
+  writtenExamEnd?: string;
+  writtenResultDate?: string;
+  practicalRegStart?: string;
+  practicalRegEnd?: string;
+  practicalExamStart?: string;
+  practicalExamEnd?: string;
+  practicalResultDate?: string;
+}
+
 @Schema({ timestamps: true })
 export class Cert {
   @Prop({ required: true, unique: true })
-  jmcd: string;
+  code: string;
 
   @Prop({ required: true })
-  jmfldnm: string;
+  name: string;
 
   @Prop()
-  mdobligfldcd?: string;
+  category?: string;
 
   @Prop()
-  mdobligfldnm?: string;
+  subCategory?: string;
 
   @Prop()
-  obligfldcd?: string;
+  type?: string;
 
   @Prop()
-  obligfldnm?: string;
-
-  @Prop()
-  qualgbcd?: string;
-
-  @Prop()
-  qualgbnm?: string;
-
-  @Prop()
-  seriescd?: string;
-
-  @Prop()
-  seriesnm?: string;
-
-  @Prop()
-  outlook?: string;
+  grade?: string;
 
   @Prop()
   agency?: string;
 
+  @Prop()
+  description?: string;
+
   @Prop({ type: [Object] })
-  schedule?: any[];
+  schedule?: CertSchedule[];
 }
 
 export const CertSchema = SchemaFactory.createForClass(Cert);

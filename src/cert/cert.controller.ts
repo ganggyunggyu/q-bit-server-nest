@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CertService } from './cert.service';
+import { QnetScheduleService } from './qnet-schedule.service';
 import {
   ApiOperation,
   ApiQuery,
@@ -20,10 +21,13 @@ import { CurrentUser } from 'src/user/decorator/user.decorator';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { Types } from 'mongoose';
 
-@ApiTags('자격증') // 그룹 이름
+@ApiTags('자격증')
 @Controller('cert')
 export class CertController {
-  constructor(private readonly certService: CertService) {}
+  constructor(
+    private readonly certService: CertService,
+    private readonly qnetScheduleService: QnetScheduleService,
+  ) {}
 
   @Get('search')
   @ApiOperation({
@@ -37,32 +41,32 @@ export class CertController {
   })
   @ApiQuery({ name: 'agency', required: false, description: '운영기관' })
   @ApiQuery({
-    name: 'seriesnm',
+    name: 'grade',
     required: false,
-    description: '시리즈명 (기술사 등)',
+    description: '등급 (기술사, 기사, 산업기사, 기능사 등)',
   })
-  @ApiQuery({ name: 'obligfldnm', required: false, description: '대분류명' })
-  @ApiQuery({ name: 'mdobligfldnm', required: false, description: '중분류명' })
+  @ApiQuery({ name: 'category', required: false, description: '대분류' })
+  @ApiQuery({ name: 'subCategory', required: false, description: '중분류' })
   async searchCerts(
     @Query('keyword') keyword?: string,
     @Query('agency') agency?: string,
-    @Query('seriesnm') seriesnm?: string,
-    @Query('obligfldnm') obligfldnm?: string,
-    @Query('mdobligfldnm') mdobligfldnm?: string,
+    @Query('grade') grade?: string,
+    @Query('category') category?: string,
+    @Query('subCategory') subCategory?: string,
   ) {
     return this.certService.searchCerts({
       keyword,
       agency,
-      seriesnm,
-      obligfldnm,
-      mdobligfldnm,
+      grade,
+      category,
+      subCategory,
     });
   }
 
   @Get('search/keyword')
   @ApiOperation({
-    summary: '자격증 검색',
-    description: '검색어로 자격증을 찾습니다.',
+    summary: '자격증명 검색',
+    description: '검색어로 자격증을 찾습니다. (Atlas Search 사용)',
   })
   @ApiQuery({ name: 'q', required: true, description: '검색 키워드' })
   @ApiQuery({
@@ -71,14 +75,14 @@ export class CertController {
     description: '최대 결과 개수',
     example: 10,
   })
-  async getSearchCertByJmnm(
+  async searchCertsByName(
     @Query('q') keyword: string,
     @Query('limit') limit = 10,
   ) {
     if (!keyword) {
       return { message: '검색어가 필요합니다.' };
     }
-    return this.certService.getSearchCertByJmnm(keyword, +limit);
+    return this.certService.searchCertsByName(keyword, +limit);
   }
 
   @Get('popular')
@@ -88,11 +92,9 @@ export class CertController {
     description: '인기 자격증 목록 조회 성공',
     schema: {
       example: [
-        { _id: '683c20625af8b0548b647eca', jmfldnm: '정보처리기사' },
-        { _id: '683c205e5af8b0548b647dfb', jmfldnm: '전기기사' },
-        { _id: '683c205c5af8b0548b647dab', jmfldnm: '토목기사' },
-        { _id: '683c205b5af8b0548b647d85', jmfldnm: '건축기사' },
-        { _id: '683c205e5af8b0548b647dfc', jmfldnm: '산업안전기사' },
+        { _id: '683c20625af8b0548b647eca', name: '정보처리기사', grade: '기사', hasSchedule: true, daysLeft: 45 },
+        { _id: '683c205e5af8b0548b647dfb', name: '전기기사', grade: '기사', hasSchedule: true, daysLeft: 30 },
+        { _id: '683c205c5af8b0548b647dab', name: '토목기사', grade: '기사', hasSchedule: false, daysLeft: null },
       ],
     },
   })
@@ -113,17 +115,7 @@ export class CertController {
   async getUpcomingCerts(@Query('limit') limit = 3) {
     return this.certService.getUpcomingCerts(+limit);
   }
-  @Get(':id')
-  @ApiOperation({
-    summary: '자격증 상세 조회',
-    description: '자격증 ID로 상세 정보 조회',
-  })
-  @ApiParam({ name: 'id', description: '자격증 MongoDB ObjectId' })
-  async getCertById(@Param('id') id: string) {
-    return this.certService.getCertById(id);
-  }
-
-  @Get('/remind/list')
+  @Get('remind/list')
   @ApiOperation({ summary: '내 리마인드 자격증 리스트 조회' })
   @ApiResponse({
     status: 200,
@@ -132,9 +124,12 @@ export class CertController {
       example: [
         {
           _id: '664a84ffb1d6e9b54a7d8a12',
-          jmfldnm: '정보처리기사',
+          code: '1320',
+          name: '정보처리기사',
           agency: '한국산업인력공단',
-          seriesnm: '기사',
+          grade: '기사',
+          hasSchedule: true,
+          daysLeft: 45,
         },
       ],
     },
@@ -143,6 +138,16 @@ export class CertController {
   @UseGuards(JwtAuthGuard)
   async getMyRemindCerts(@CurrentUser() user: { _id: Types.ObjectId }) {
     return this.certService.getMyRemindCerts(user._id.toString());
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: '자격증 상세 조회',
+    description: '자격증 ID로 상세 정보 조회',
+  })
+  @ApiParam({ name: 'id', description: '자격증 MongoDB ObjectId' })
+  async getCertById(@Param('id') id: string) {
+    return this.certService.getCertById(id);
   }
 
   @Post('/remind/:id')
@@ -181,5 +186,43 @@ export class CertController {
     @Param('id') id: string,
   ) {
     return this.certService.removeRemindCert(user._id.toString(), id);
+  }
+
+  @Get('schedule/status')
+  @ApiOperation({
+    summary: '일정 데이터 현황 조회',
+    description: '자격증 일정 데이터 보유 현황을 확인합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '일정 현황 정보',
+    schema: {
+      example: {
+        total: 178,
+        withSchedule: 120,
+        withoutSchedule: 58,
+        percentage: 67,
+      },
+    },
+  })
+  async getScheduleStatus() {
+    return this.qnetScheduleService.getScheduleStatus();
+  }
+
+  @Post('schedule/sync')
+  @ApiOperation({
+    summary: 'Q-net API 일정 동기화 (관리자)',
+    description:
+      '한국산업인력공단 API에서 시험 일정을 가져와 DB를 업데이트합니다.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: '동기화 결과',
+    schema: {
+      example: { updated: 150, notFound: 28 },
+    },
+  })
+  async syncSchedules() {
+    return this.qnetScheduleService.updateCertSchedules();
   }
 }
