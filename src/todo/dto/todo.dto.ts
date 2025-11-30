@@ -9,6 +9,7 @@ import {
   ArrayMinSize,
   MinLength,
   MaxLength,
+  IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -39,6 +40,15 @@ export class CreateTodoItemDto {
   @IsOptional()
   @IsBoolean()
   isCompleted?: boolean;
+
+  @ApiProperty({
+    description: '연결된 자격증 ID (선택)',
+    required: false,
+    example: '683c20625af8b0548b647eca',
+  })
+  @IsOptional()
+  @IsMongoId()
+  certId?: string;
 }
 
 export class CreateTodoDto {
@@ -100,6 +110,15 @@ export class UpdateTodoDto {
   @IsOptional()
   @IsBoolean()
   isCompleted?: boolean;
+
+  @ApiProperty({
+    description: '연결된 자격증 ID (선택)',
+    required: false,
+    example: '683c20625af8b0548b647eca',
+  })
+  @IsOptional()
+  @IsMongoId()
+  certId?: string;
 }
 
 export class UpdateTodoCompletionDto {

@@ -19,6 +19,9 @@ export class Todo {
 
   @Prop({ default: false })
   isCompleted: boolean;
+
+  @Prop({ type: Types.ObjectId, ref: 'Cert' })
+  certId?: Types.ObjectId;
 }
 
 export const TodoSchema = SchemaFactory.createForClass(Todo);
