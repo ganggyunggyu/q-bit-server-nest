@@ -15,6 +15,6 @@ import { QnetScheduleService } from './qnet-schedule.service';
   ],
   controllers: [CertController],
   providers: [CertService, QnetScheduleService],
-  exports: [QnetScheduleService],
+  exports: [CertService, QnetScheduleService],
 })
 export class CertModule {}

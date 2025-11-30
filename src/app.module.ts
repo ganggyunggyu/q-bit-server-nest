@@ -8,6 +8,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CertModule } from './cert/cert.module';
 import { TodoModule } from './todo/todo.module';
 import { MemoModule } from './memo/memo.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { MemoModule } from './memo/memo.module';
     CertModule,
     TodoModule,
     MemoModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],
