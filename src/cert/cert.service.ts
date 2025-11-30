@@ -142,22 +142,36 @@ export class CertService {
   }
 
   async getPopularCerts() {
-    const targetIds = [
-      '68529189514e0802729cff70',
-      '685208c24e8e01f9f2534f9d',
-      '685208c34e8e01f9f2534faa',
-      '685208c34e8e01f9f2534fab',
-      '685208be4e8e01f9f2534f4d',
-      '685208ba4e8e01f9f2534f07',
-      '685208c54e8e01f9f2534fd6',
-      '685208cd4e8e01f9f2535078',
-      '685208bb4e8e01f9f2534f12',
-      '685299ff514e0802729cff73',
-    ].map((id) => new Types.ObjectId(id));
+    const majorCategories = [
+      '정보통신',
+      '건설',
+      '전기·전자',
+      '기계',
+      '화공',
+      '안전관리',
+    ];
 
     const pipeline = [
-      { $match: { _id: { $in: targetIds } } },
+      {
+        $match: {
+          grade: '기사',
+          category: { $in: majorCategories },
+        },
+      },
       ...this.daysLeftCalculationPipeline,
+      {
+        $addFields: {
+          sortPriority: {
+            $cond: {
+              if: { $eq: ['$hasSchedule', true] },
+              then: 1,
+              else: 2,
+            },
+          },
+        },
+      },
+      { $sort: { sortPriority: 1 as 1 } },
+      { $limit: 20 },
     ];
 
     const certs = await this.certModel.aggregate(pipeline).exec();

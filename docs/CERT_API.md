@@ -1,68 +1,106 @@
-# 자격증 API 문서 (Frontend Integration Guide)
+# 자격증 API 문서 (Certification API Documentation)
 
-## 기본 정보
-
-- **Base URL**: `http://localhost:8080` (개발) / `https://api.qbit.com` (운영)
-- **인증**: Bearer Token (JWT) - 일부 API는 인증 필요
-- **Content-Type**: `application/json`
-
----
-
-## 자격증 모델 (Cert Schema)
-
-```typescript
-interface Cert {
-  _id: string;           // MongoDB ObjectId
-  code: string;          // 자격증 코드 (예: "1320")
-  name: string;          // 자격증명 (예: "정보처리기사")
-  category?: string;     // 대분류 (예: "정보통신")
-  subCategory?: string;  // 중분류 (예: "정보기술")
-  type?: string;         // 유형 (예: "국가기술자격")
-  grade?: string;        // 등급 (예: "기사", "산업기사", "기능사")
-  agency?: string;       // 시행기관 (예: "한국산업인력공단")
-  description?: string;  // 설명
-  schedule?: CertSchedule[];  // 시험 일정 배열
-
-  // 계산된 필드 (API 응답에 포함)
-  hasSchedule: boolean;  // 일정 데이터 존재 여부
-  daysLeft: number | null;  // 다음 필기시험까지 남은 일수 (null이면 일정 없음)
-}
-
-interface CertSchedule {
-  round: string;              // 회차 (예: "2025년 정기 기사 1회")
-  writtenRegStart?: string;   // 필기 접수 시작 (YYYYMMDD)
-  writtenRegEnd?: string;     // 필기 접수 종료
-  writtenExamStart?: string;  // 필기 시험 시작일
-  writtenExamEnd?: string;    // 필기 시험 종료일
-  writtenResultDate?: string; // 필기 합격발표일
-  practicalRegStart?: string; // 실기 접수 시작
-  practicalRegEnd?: string;   // 실기 접수 종료
-  practicalExamStart?: string;// 실기 시험 시작일
-  practicalExamEnd?: string;  // 실기 시험 종료일
-  practicalResultDate?: string; // 실기 합격발표일
-}
+## Base URL
+```
+http://localhost:8080/cert
 ```
 
+**개발 환경**: `http://localhost:8080`
+**운영 환경**: 배포 도메인에 따라 변경
+
 ---
 
-## API 엔드포인트
+## 📌 GET 엔드포인트
 
-### 1. 자격증 검색 (필터)
+### 1. 자격증 검색 (쿼리 기반)
+
+**기본 검색 API - 여러 조건 조합 가능**
 
 ```
 GET /cert/search
 ```
 
-**Query Parameters:**
-| 파라미터 | 타입 | 필수 | 설명 |
+**Query Parameters (모두 선택사항):**
+| 파라미터 | 타입 | 설명 | 예시 |
 |---------|------|------|------|
-| keyword | string | X | 자격증명 키워드 검색 |
-| agency | string | X | 시행기관 필터 |
-| grade | string | X | 등급 필터 (기술사, 기사, 산업기사, 기능사) |
-| category | string | X | 대분류 필터 |
-| subCategory | string | X | 중분류 필터 |
+| `keyword` | string | 자격증명 키워드 | `정보처리` |
+| `agency` | string | 운영기관 | `한국산업인력공단` |
+| `grade` | string | 등급 | `기사`, `기술사`, `산업기사`, `기능사` |
+| `category` | string | 대분류 | `정보통신` |
+| `subCategory` | string | 중분류 | `정보기술` |
 
-**응답 예시:**
+**Request Example:**
+```bash
+# 모든 자격증 조회
+GET /cert/search
+
+# 정보처리 관련 기사급 자격증 검색
+GET /cert/search?keyword=정보처리&grade=기사
+
+# 한국산업인력공단의 기사급 자격증
+GET /cert/search?agency=한국산업인력공단&grade=기사
+```
+
+**Response:**
+```json
+[
+  {
+    "_id": "683c20625af8b0548b647eca",
+    "code": "1320",
+    "name": "정보처리기사",
+    "category": "정보통신",
+    "subCategory": "정보기술",
+    "type": "국가기술자격",
+    "grade": "기사",
+    "agency": "한국산업인력공단",
+    "description": "정보시스템의 생명주기 전반에 걸친 프로젝트 업무를 수행하는 직무",
+    "schedule": [
+      {
+        "round": "2025년 1회",
+        "writtenRegStart": "2025-01-20",
+        "writtenRegEnd": "2025-01-23",
+        "writtenExamStart": "2025-03-02",
+        "writtenExamEnd": "2025-03-02",
+        "writtenResultDate": "2025-03-19",
+        "practicalRegStart": "2025-03-24",
+        "practicalRegEnd": "2025-03-27",
+        "practicalExamStart": "2025-05-10",
+        "practicalExamEnd": "2025-05-24",
+        "practicalResultDate": "2025-06-18"
+      }
+    ],
+    "createdAt": "2025-05-29T12:00:00.000Z",
+    "updatedAt": "2025-05-29T12:00:00.000Z"
+  }
+]
+```
+
+---
+
+### 2. 자격증명 검색 (Atlas Search)
+
+**빠른 자격증명 검색 - 자동완성에 적합**
+
+```
+GET /cert/search/keyword
+```
+
+**Query Parameters:**
+| 파라미터 | 타입 | 필수 | 설명 | 기본값 |
+|---------|------|------|------|--------|
+| `q` | string | ✅ | 검색 키워드 | - |
+| `limit` | number | ❌ | 최대 결과 개수 | 10 |
+
+**Request Example:**
+```bash
+# 기본 검색 (10개)
+GET /cert/search/keyword?q=정보
+
+# 최대 5개만
+GET /cert/search/keyword?q=기사&limit=5
+```
+
+**Response:**
 ```json
 [
   {
@@ -70,35 +108,14 @@ GET /cert/search
     "code": "1320",
     "name": "정보처리기사",
     "grade": "기사",
-    "agency": "한국산업인력공단",
-    "hasSchedule": true,
-    "daysLeft": 45
-  }
-]
-```
-
----
-
-### 2. 자격증 검색 (Atlas Search)
-
-```
-GET /cert/search/keyword
-```
-
-**Query Parameters:**
-| 파라미터 | 타입 | 필수 | 설명 |
-|---------|------|------|------|
-| q | string | O | 검색 키워드 |
-| limit | number | X | 최대 결과 수 (기본: 10) |
-
-**응답 예시:**
-```json
-[
+    "agency": "한국산업인력공단"
+  },
   {
-    "_id": "683c20625af8b0548b647eca",
-    "name": "정보처리기사",
-    "hasSchedule": true,
-    "daysLeft": 30
+    "_id": "683c20615af8b0548b647eb9",
+    "code": "1310",
+    "name": "정보보안기사",
+    "grade": "기사",
+    "agency": "한국산업인력공단"
   }
 ]
 ```
@@ -107,18 +124,118 @@ GET /cert/search/keyword
 
 ### 3. 인기 자격증 조회
 
+**주요 분야 기사급 자격증 추천 5개**
+
 ```
 GET /cert/popular
 ```
 
-20대에게 인기 있는 자격증 5개를 랜덤하게 반환합니다.
+**선정 기준:**
+- 등급: 기사급만 선정
+- 분야: 정보통신, 건설, 전기·전자, 기계, 화공, 안전관리 등 주요 6개 분야
+- 우선순위: 시험일정이 있는 자격증 우선
+- 랜덤: 매 요청마다 다른 5개 반환 (최대 20개 중 랜덤 선택)
 
-**응답 예시:**
+**Query Parameters:** 없음
+
+**Response:**
 ```json
 [
   {
     "_id": "683c20625af8b0548b647eca",
     "name": "정보처리기사",
+    "grade": "기사",
+    "hasSchedule": true,
+    "daysLeft": 45
+  },
+  {
+    "_id": "683c205e5af8b0548b647dfb",
+    "name": "전기기사",
+    "grade": "기사",
+    "hasSchedule": true,
+    "daysLeft": 30
+  },
+  {
+    "_id": "683c205c5af8b0548b647dab",
+    "name": "토목기사",
+    "grade": "기사",
+    "hasSchedule": false,
+    "daysLeft": null
+  }
+]
+```
+
+**Response 필드 설명:**
+- `hasSchedule`: 시험일정 등록 여부
+- `daysLeft`: D-day (시험까지 남은 일수, 일정 없으면 null)
+
+---
+
+### 4. 시험 임박 자격증
+
+**시험일정이 일주일 미만인 자격증**
+
+```
+GET /cert/upcoming
+```
+
+**Query Parameters:**
+| 파라미터 | 타입 | 필수 | 설명 | 기본값 |
+|---------|------|------|------|--------|
+| `limit` | number | ❌ | 최대 결과 개수 | 3 |
+
+**Request Example:**
+```bash
+# 기본 (3개)
+GET /cert/upcoming
+
+# 5개까지
+GET /cert/upcoming?limit=5
+```
+
+**Response:**
+```json
+[
+  {
+    "_id": "683c20625af8b0548b647eca",
+    "name": "정보처리기사",
+    "grade": "기사",
+    "daysLeft": 5,
+    "nextExamDate": "2025-12-05"
+  },
+  {
+    "_id": "683c205e5af8b0548b647dfb",
+    "name": "전기기사",
+    "grade": "기사",
+    "daysLeft": 3,
+    "nextExamDate": "2025-12-03"
+  }
+]
+```
+
+---
+
+### 5. 내 리마인드 자격증 리스트 🔒
+
+**사용자가 설정한 알림 자격증 조회 (인증 필요)**
+
+```
+GET /cert/remind/list
+```
+
+**Headers:**
+```
+Authorization: Bearer {accessToken}
+```
+
+**Response:**
+```json
+[
+  {
+    "_id": "664a84ffb1d6e9b54a7d8a12",
+    "code": "1320",
+    "name": "정보처리기사",
+    "agency": "한국산업인력공단",
     "grade": "기사",
     "hasSchedule": true,
     "daysLeft": 45
@@ -128,33 +245,25 @@ GET /cert/popular
 
 ---
 
-### 4. 임박 시험 조회
+### 6. 자격증 상세 조회
 
-```
-GET /cert/upcoming
-```
-
-일주일 내 시험이 있는 자격증을 반환합니다.
-
-**Query Parameters:**
-| 파라미터 | 타입 | 필수 | 설명 |
-|---------|------|------|------|
-| limit | number | X | 최대 결과 수 (기본: 3) |
-
----
-
-### 5. 자격증 상세 조회
+**특정 자격증의 전체 정보 조회**
 
 ```
 GET /cert/:id
 ```
 
 **Path Parameters:**
-| 파라미터 | 타입 | 필수 | 설명 |
-|---------|------|------|------|
-| id | string | O | 자격증 MongoDB ObjectId |
+| 파라미터 | 타입 | 설명 |
+|---------|------|------|
+| `id` | string | 자격증 MongoDB ObjectId |
 
-**응답 예시:**
+**Request Example:**
+```bash
+GET /cert/683c20625af8b0548b647eca
+```
+
+**Response:**
 ```json
 {
   "_id": "683c20625af8b0548b647eca",
@@ -165,61 +274,38 @@ GET /cert/:id
   "type": "국가기술자격",
   "grade": "기사",
   "agency": "한국산업인력공단",
+  "description": "정보시스템의 생명주기 전반에 걸친 프로젝트 업무를 수행하는 직무",
   "schedule": [
     {
-      "round": "2025년 정기 기사 1회",
-      "writtenRegStart": "20250110",
-      "writtenRegEnd": "20250116",
-      "writtenExamStart": "20250208",
-      "writtenExamEnd": "20250301",
-      "writtenResultDate": "20250312"
+      "round": "2025년 1회",
+      "writtenRegStart": "2025-01-20",
+      "writtenRegEnd": "2025-01-23",
+      "writtenExamStart": "2025-03-02",
+      "writtenExamEnd": "2025-03-02",
+      "writtenResultDate": "2025-03-19",
+      "practicalRegStart": "2025-03-24",
+      "practicalRegEnd": "2025-03-27",
+      "practicalExamStart": "2025-05-10",
+      "practicalExamEnd": "2025-05-24",
+      "practicalResultDate": "2025-06-18"
     }
   ],
-  "hasSchedule": true,
-  "daysLeft": 45
+  "createdAt": "2025-05-29T12:00:00.000Z",
+  "updatedAt": "2025-05-29T12:00:00.000Z"
 }
 ```
 
 ---
 
-### 6. 리마인드 자격증 목록 조회 (인증 필요)
+### 7. 일정 데이터 현황
 
-```
-GET /cert/remind/list
-Authorization: Bearer {accessToken}
-```
-
-사용자가 설정한 리마인드 자격증 목록을 반환합니다.
-
----
-
-### 7. 리마인드 자격증 추가 (인증 필요)
-
-```
-POST /cert/remind/:id
-Authorization: Bearer {accessToken}
-```
-
----
-
-### 8. 리마인드 자격증 제거 (인증 필요)
-
-```
-DELETE /cert/remind/:id
-Authorization: Bearer {accessToken}
-```
-
----
-
-### 9. 일정 데이터 현황 조회
+**시험일정 등록 현황 통계**
 
 ```
 GET /cert/schedule/status
 ```
 
-자격증 일정 데이터 보유 현황을 확인합니다.
-
-**응답 예시:**
+**Response:**
 ```json
 {
   "total": 178,
@@ -229,9 +315,192 @@ GET /cert/schedule/status
 }
 ```
 
+**필드 설명:**
+- `total`: 전체 자격증 수
+- `withSchedule`: 일정 있는 자격증 수
+- `withoutSchedule`: 일정 없는 자격증 수
+- `percentage`: 일정 등록 비율 (%)
+
 ---
 
-## 일정 없는 자격증 처리 (준비중)
+## 🔐 POST/DELETE 엔드포인트
+
+### 8. 리마인드 자격증 추가 🔒
+
+```
+POST /cert/remind/:id
+```
+
+**Headers:**
+```
+Authorization: Bearer {accessToken}
+```
+
+**Path Parameters:**
+| 파라미터 | 타입 | 설명 |
+|---------|------|------|
+| `id` | string | 자격증 ObjectId |
+
+**Response:**
+```json
+{
+  "message": "추가 완료"
+}
+```
+
+---
+
+### 9. 리마인드 자격증 제거 🔒
+
+```
+DELETE /cert/remind/:id
+```
+
+**Headers:**
+```
+Authorization: Bearer {accessToken}
+```
+
+**Path Parameters:**
+| 파라미터 | 타입 | 설명 |
+|---------|------|------|
+| `id` | string | 자격증 ObjectId |
+
+**Response:**
+```json
+{
+  "message": "제거 완료"
+}
+```
+
+---
+
+### 10. 일정 동기화 (관리자)
+
+**Q-net API에서 시험일정 가져오기**
+
+```
+POST /cert/schedule/sync
+```
+
+**Response:**
+```json
+{
+  "updated": 150,
+  "notFound": 28
+}
+```
+
+**필드 설명:**
+- `updated`: 업데이트된 자격증 수
+- `notFound`: API에서 찾지 못한 자격증 수
+
+---
+
+## 📊 데이터 구조
+
+### Cert (자격증)
+
+```typescript
+interface Cert {
+  _id: string;                    // MongoDB ObjectId
+  code: string;                   // 자격증 코드 (Q-net 기준)
+  name: string;                   // 자격증명
+  category?: string;              // 대분류 (예: 정보통신)
+  subCategory?: string;           // 중분류 (예: 정보기술)
+  type?: string;                  // 종류 (예: 국가기술자격)
+  grade?: string;                 // 등급 (기술사/기사/산업기사/기능사)
+  agency?: string;                // 운영기관
+  description?: string;           // 자격증 설명
+  schedule?: CertSchedule[];      // 시험일정 배열
+  createdAt: string;              // 생성일 (ISO 8601)
+  updatedAt: string;              // 수정일 (ISO 8601)
+}
+```
+
+### CertSchedule (시험일정)
+
+```typescript
+interface CertSchedule {
+  round: string;                  // 회차 (예: "2025년 1회")
+  writtenRegStart?: string;       // 필기 접수 시작일
+  writtenRegEnd?: string;         // 필기 접수 종료일
+  writtenExamStart?: string;      // 필기 시험 시작일
+  writtenExamEnd?: string;        // 필기 시험 종료일
+  writtenResultDate?: string;     // 필기 합격발표일
+  practicalRegStart?: string;     // 실기 접수 시작일
+  practicalRegEnd?: string;       // 실기 접수 종료일
+  practicalExamStart?: string;    // 실기 시험 시작일
+  practicalExamEnd?: string;      // 실기 시험 종료일
+  practicalResultDate?: string;   // 실기 합격발표일
+}
+```
+
+---
+
+## 🚀 사용 예시 (React + TanStack Query)
+
+```typescript
+import { useQuery } from '@tanstack/react-query';
+
+// 1. 자격증 검색
+const useSearchCerts = (keyword?: string, grade?: string) => {
+  return useQuery({
+    queryKey: ['certs', 'search', keyword, grade],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (keyword) params.append('keyword', keyword);
+      if (grade) params.append('grade', grade);
+
+      const res = await fetch(`/cert/search?${params}`);
+      return res.json();
+    },
+  });
+};
+
+// 2. 인기 자격증
+const usePopularCerts = () => {
+  return useQuery({
+    queryKey: ['certs', 'popular'],
+    queryFn: async () => {
+      const res = await fetch('/cert/popular');
+      return res.json();
+    },
+  });
+};
+
+// 3. 자격증 상세
+const useCertDetail = (id: string) => {
+  return useQuery({
+    queryKey: ['cert', id],
+    queryFn: async () => {
+      const res = await fetch(`/cert/${id}`);
+      return res.json();
+    },
+    enabled: !!id,
+  });
+};
+
+// 4. 내 리마인드 리스트 (인증 필요)
+const useMyRemindCerts = (token: string) => {
+  return useQuery({
+    queryKey: ['certs', 'remind'],
+    queryFn: async () => {
+      const res = await fetch('/cert/remind/list', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      return res.json();
+    },
+    enabled: !!token,
+  });
+};
+```
+
+---
+
+## 📝 일정 없는 자격증 처리
 
 ### hasSchedule 필드 활용
 
@@ -310,14 +579,14 @@ function ScheduleBadge({ hasSchedule, daysLeft }: ScheduleBadgeProps) {
 
 ---
 
-## 에러 응답
+## 🐛 에러 처리
 
 ### 공통 에러 형식
 
 ```json
 {
   "statusCode": 404,
-  "message": "Cert with ID xxx not found",
+  "message": "자격증을 찾을 수 없습니다",
   "error": "Not Found"
 }
 ```
@@ -326,6 +595,8 @@ function ScheduleBadge({ hasSchedule, daysLeft }: ScheduleBadgeProps) {
 
 | Status Code | 설명 |
 |-------------|------|
+| 200 | 성공 |
+| 201 | 생성 성공 |
 | 400 | 잘못된 요청 (파라미터 오류) |
 | 401 | 인증 필요 (토큰 없음/만료) |
 | 404 | 자격증을 찾을 수 없음 |
@@ -333,9 +604,28 @@ function ScheduleBadge({ hasSchedule, daysLeft }: ScheduleBadgeProps) {
 
 ---
 
-## 참고 사항
+## 📌 참고사항
 
-1. **일정 데이터 출처**: 한국산업인력공단 Q-net API
-2. **일정 업데이트 주기**: 관리자가 수동으로 동기화 (`POST /cert/schedule/sync`)
-3. **날짜 형식**: `YYYYMMDD` (예: "20250208")
-4. **Swagger 문서**: `http://localhost:8080/api` 에서 확인 가능
+### 인증 (Authentication)
+- 🔒 표시가 있는 엔드포인트는 JWT 토큰 필요
+- Header 형식: `Authorization: Bearer {accessToken}`
+
+### 날짜 형식
+- 모든 날짜는 `YYYY-MM-DD` 형식 (예: `2025-03-02`)
+- `createdAt`, `updatedAt`은 ISO 8601 형식
+
+### Pagination
+- 현재 페이지네이션은 미구현
+- `limit` 파라미터로 결과 개수 제한 가능
+
+### CORS
+- `ALLOWED_ORIGINS` 환경변수에 프론트엔드 도메인 등록 필요
+- 기본값: `http://localhost:5173`, `http://localhost:3000`
+
+### Swagger UI
+- 개발 서버 실행 후 `http://localhost:8080/api` 접속
+- 전체 API 명세 및 테스트 가능
+
+### 일정 데이터 출처
+- 한국산업인력공단 Q-net API
+- 관리자가 수동으로 동기화 (`POST /cert/schedule/sync`)
