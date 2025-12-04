@@ -9,6 +9,7 @@ import { CertModule } from './cert/cert.module';
 import { TodoModule } from './todo/todo.module';
 import { MemoModule } from './memo/memo.module';
 import { AiModule } from './ai/ai.module';
+import { PassedCertModule } from './passed-cert/passed-cert.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { AiModule } from './ai/ai.module';
     TodoModule,
     MemoModule,
     AiModule,
+    PassedCertModule,
   ],
   controllers: [AppController],
   providers: [AppService],
