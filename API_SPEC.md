@@ -87,6 +87,22 @@
 
 ---
 
+### PassedCert (합격 기록)
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `_id` | `ObjectId` | O | MongoDB ID |
+| `userId` | `ObjectId` | O | 사용자 ID |
+| `certId` | `ObjectId` | O | 자격증 ID (Cert 참조) |
+| `passedDate` | `Date` | O | 합격일 |
+| `score` | `number` | X | 점수 (0-100) |
+| `type` | `enum` | O | 합격 유형: `"written"` \| `"practical"` \| `"final"` |
+| `memo` | `string` | X | 메모 (최대 500자) |
+| `createdAt` | `Date` | O | 생성일 (자동) |
+| `updatedAt` | `Date` | O | 수정일 (자동) |
+
+---
+
 ## API 엔드포인트
 
 ### Auth (인증)
@@ -119,24 +135,119 @@
 
 | Method | Endpoint | 설명 | 인증 |
 |--------|----------|------|------|
-| `GET` | `/cert/search` | 자격증 검색 | X |
+| `GET` | `/cert/search` | 자격증 필터 검색 | X |
 | `GET` | `/cert/search/keyword?q=검색어` | 자격증명 검색 (Atlas Search) | X |
-| `GET` | `/cert/popular` | 인기 자격증 5개 | X |
-| `GET` | `/cert/upcoming` | 시험 임박 자격증 | X |
+| `GET` | `/cert/popular` | 인기 자격증 5개 (랜덤 셔플) | X |
+| `GET` | `/cert/upcoming?limit=3` | 시험 임박 자격증 (7일 이내) | X |
 | `GET` | `/cert/remind/list` | 내 리마인드 자격증 목록 | O |
 | `GET` | `/cert/:id` | 자격증 상세 조회 | X |
 | `POST` | `/cert/remind/:id` | 리마인드 추가 | O |
 | `DELETE` | `/cert/remind/:id` | 리마인드 제거 | O |
+| `GET` | `/cert/schedule/status` | 일정 데이터 현황 조회 | X |
+| `POST` | `/cert/schedule/sync` | Q-net API 일정 동기화 (관리자) | X |
 
-#### GET /cert/search - Query Parameters
+#### GET /cert/search - 필터 검색
 
-| 파라미터 | 타입 | 설명 |
-|----------|------|------|
-| `keyword` | `string` | 자격증명 키워드 |
-| `agency` | `string` | 운영기관 |
-| `grade` | `string` | 등급 |
-| `category` | `string` | 대분류 |
-| `subCategory` | `string` | 중분류 |
+**Query Parameters:**
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|----------|------|------|------|
+| `keyword` | `string` | X | 자격증명 키워드 (부분 일치, 대소문자 무시) |
+| `agency` | `string` | X | 운영기관 (예: `"한국산업인력공단"`) |
+| `grade` | `string` | X | 등급 (예: `"기사"`, `"산업기사"`, `"기능사"`) |
+| `category` | `string` | X | 대분류 (예: `"정보통신"`, `"건설"`) |
+| `subCategory` | `string` | X | 중분류 |
+
+**예시:**
+```
+GET /cert/search?keyword=정보처리&grade=기사
+GET /cert/search?category=정보통신
+GET /cert/search?agency=한국산업인력공단&grade=기능사
+```
+
+**Response:**
+```typescript
+Cert[]  // daysLeft, hasSchedule 포함
+```
+
+#### GET /cert/search/keyword - Atlas Search 검색
+
+**Query Parameters:**
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|----------|------|------|------|
+| `q` | `string` | O | 검색 키워드 |
+| `limit` | `number` | X | 최대 결과 개수 (기본값: 10) |
+
+**예시:**
+```
+GET /cert/search/keyword?q=전기&limit=5
+```
+
+**특징:**
+- MongoDB Atlas Search 인덱스 사용
+- 오타 허용, 유사어 검색 지원
+- 빠른 full-text 검색
+
+#### GET /cert/popular - 인기 자격증
+
+**특징:**
+- 실제 사용자 데이터 기반 인기도 계산
+- `합격 기록 수(passedCount)` + `리마인드 수(remindCount)` = `인기도(popularity)`
+- 인기도 높은 순으로 상위 5개 반환
+
+**Response:**
+```typescript
+[
+  {
+    _id: string;
+    name: string;
+    grade: string;
+    category: string;
+    hasSchedule: boolean;
+    daysLeft: number | null;
+    popularity: number;    // 총 인기도 (passedCount + remindCount)
+    passedCount: number;   // 합격 기록 수
+    remindCount: number;   // 리마인드 설정한 사용자 수
+  }
+]
+```
+
+#### GET /cert/upcoming - 시험 임박 자격증
+
+**Query Parameters:**
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|----------|------|------|------|
+| `limit` | `number` | X | 최대 결과 개수 (기본값: 3) |
+
+**특징:**
+- 필기시험 시작일 기준 7일 이내 자격증
+- daysLeft가 작은 순으로 정렬
+
+#### GET /cert/schedule/status - 일정 현황
+
+**Response:**
+```typescript
+{
+  total: number;        // 전체 자격증 수
+  withSchedule: number; // 일정 있는 자격증 수
+  withoutSchedule: number; // 일정 없는 자격증 수
+  percentage: number;   // 일정 보유율 (%)
+}
+```
+
+#### POST /cert/schedule/sync - Q-net 일정 동기화
+
+한국산업인력공단 공공 API에서 시험 일정을 가져와 DB 업데이트
+
+**Response:**
+```typescript
+{
+  updated: number;   // 업데이트된 자격증 수
+  notFound: number;  // 매칭 실패한 자격증 수
+}
+```
 
 ---
 
@@ -233,6 +344,70 @@
 
 ---
 
+### PassedCert (합격 기록)
+
+| Method | Endpoint | 설명 | 인증 |
+|--------|----------|------|------|
+| `POST` | `/passed-cert` | 합격 기록 등록 | O |
+| `GET` | `/passed-cert` | 내 합격 기록 목록 조회 | O |
+| `GET` | `/passed-cert/:id` | 합격 기록 상세 조회 | O |
+| `PATCH` | `/passed-cert/:id` | 합격 기록 수정 | O |
+| `DELETE` | `/passed-cert/:id` | 합격 기록 삭제 | O |
+
+#### POST /passed-cert - Request Body
+
+```typescript
+{
+  certId: string;           // 자격증 ID (ObjectId)
+  passedDate: string;       // 합격일 "YYYY-MM-DD"
+  score?: number;           // 점수 (0-100, 선택)
+  type: 'written' | 'practical' | 'final'; // 필기/실기/최종
+  memo?: string;            // 메모 (최대 500자, 선택)
+}
+```
+
+#### GET /passed-cert - Query Parameters
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|----------|------|------|------|
+| `certId` | `string` | X | 자격증 ID로 필터링 |
+| `type` | `string` | X | 합격 유형으로 필터링 (`written`, `practical`, `final`) |
+
+#### GET /passed-cert - Response
+
+```typescript
+[
+  {
+    _id: string;
+    userId: string;
+    certId: {
+      _id: string;
+      name: string;
+      jmNm: string;
+    };
+    passedDate: string;
+    score?: number;
+    type: 'written' | 'practical' | 'final';
+    memo?: string;
+    createdAt: string;
+    updatedAt: string;
+  }
+]
+```
+
+#### PATCH /passed-cert/:id - Request Body
+
+```typescript
+{
+  passedDate?: string;      // 합격일 "YYYY-MM-DD"
+  score?: number;           // 점수 (0-100)
+  type?: 'written' | 'practical' | 'final';
+  memo?: string;            // 메모 (최대 500자)
+}
+```
+
+---
+
 ## 인증 방식
 
 - **Cookie 기반 JWT 인증**
@@ -258,6 +433,88 @@
 | `401` | Unauthorized - 인증 필요 |
 | `404` | Not Found - 리소스 없음 |
 | `500` | Internal Server Error |
+
+---
+
+### AI (인공지능)
+
+| Method | Endpoint | 설명 | 인증 |
+|--------|----------|------|------|
+| `POST` | `/ai/generate` | Grok AI 텍스트 생성 | X |
+| `POST` | `/ai/chat` | Grok AI 채팅 | X |
+| `POST` | `/ai/recommend` | AI 자격증 추천 | X |
+| `POST` | `/ai/weekly-report` | AI 주간 리포트 | O |
+
+#### POST /ai/weekly-report - Request Body
+
+```typescript
+{
+  sundayDate?: string;  // 주의 시작일 (일요일). 미입력 시 이번 주. "YYYY-MM-DD"
+  refresh?: boolean;    // true면 기존 리포트 무시하고 새로 생성 (기본값: false)
+}
+```
+
+#### POST /ai/weekly-report - Response
+
+```typescript
+{
+  weekStart: string;           // "YYYY-MM-DD"
+  weekEnd: string;             // "YYYY-MM-DD"
+  totalTodos: number;          // 전체 투두 수
+  completedTodos: number;      // 완료된 투두 수
+  weeklyCompletionRate: number; // 주간 완료율 (%)
+  dailyStats: DailyStats[];    // 일별 통계
+  summary: string;             // AI 주간 요약
+  achievements: string[];      // 잘한 점 목록
+  improvements: string[];      // 개선할 점 목록
+  nextWeekSuggestions: string[]; // 다음 주 추천 활동
+  encouragement: string;       // 격려 메시지
+}
+
+interface DailyStats {
+  date: string;        // "YYYY-MM-DD"
+  total: number;       // 전체 투두 수
+  completed: number;   // 완료된 투두 수
+  completionRate: number; // 완료율 (%)
+}
+```
+
+**주의사항:**
+- `refresh: false` (기본값): 해당 주에 이미 생성된 리포트가 있으면 캐시된 리포트 반환
+- `refresh: true`: 기존 리포트 무시하고 AI가 새로 분석하여 생성 (DB에 덮어씀)
+- 투두가 없는 주는 기본 메시지 반환 (AI 호출 안 함)
+
+#### POST /ai/recommend - Request Body
+
+```typescript
+{
+  age?: string;           // 나이
+  education?: string;     // 학력
+  field?: string;         // 관심 분야
+  experience?: string;    // 경력
+  goal?: string;          // 목표
+  additionalInfo?: string; // 추가 정보
+}
+```
+
+#### POST /ai/recommend - Response
+
+```typescript
+{
+  recommendations: CertRecommendation[];
+  summary: string;      // 전체 추천 요약
+  aiMessage?: string;   // 사용자에게 전하는 메시지
+}
+
+interface CertRecommendation {
+  certId: string;         // 자격증 ID
+  name: string;           // 자격증 이름
+  reason: string;         // 추천 이유
+  difficulty: 'easy' | 'medium' | 'hard';
+  expectedPeriod: string; // 예상 준비 기간
+  matchScore: number;     // 적합도 (0-100)
+}
+```
 
 ---
 
@@ -330,5 +587,58 @@ interface Memo {
   scheduledDate: string;
   content: string;
   createDate: string;
+}
+
+// PassedCert
+type PassedCertType = 'written' | 'practical' | 'final';
+
+interface PassedCert {
+  _id: string;
+  userId: string;
+  certId: string | { _id: string; name: string; jmNm: string };
+  passedDate: string;
+  score?: number;
+  type: PassedCertType;
+  memo?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Weekly Report
+interface DailyStats {
+  date: string;
+  total: number;
+  completed: number;
+  completionRate: number;
+}
+
+interface WeeklyReport {
+  weekStart: string;
+  weekEnd: string;
+  totalTodos: number;
+  completedTodos: number;
+  weeklyCompletionRate: number;
+  dailyStats: DailyStats[];
+  summary: string;
+  achievements: string[];
+  improvements: string[];
+  nextWeekSuggestions: string[];
+  encouragement: string;
+}
+
+// AI Recommendation
+interface CertRecommendation {
+  certId: string;
+  name: string;
+  reason: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  expectedPeriod: string;
+  matchScore: number;
+}
+
+interface RecommendResponse {
+  recommendations: CertRecommendation[];
+  summary: string;
+  aiMessage?: string;
 }
 ```
