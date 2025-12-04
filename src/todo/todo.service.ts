@@ -155,12 +155,25 @@ export class TodoService {
       ),
     );
 
+    console.log('findWeekRangeFromSunday query:', {
+      userId,
+      start: start.toISOString(),
+      end: end.toISOString(),
+    });
+
+    const allTodos = await this.todoModel.find({ userId }).lean();
+    console.log('All todos for user:', allTodos.length);
+    if (allTodos.length > 0) {
+      console.log('Sample todo date:', allTodos[0].date);
+    }
+
     const todos = await this.todoModel
       .find({
         userId,
         date: { $gte: start, $lte: end },
       })
       .lean();
+    console.log('Filtered todos:', todos.length);
 
     const grouped: Record<string, { todos: Todo[] }> = {};
 

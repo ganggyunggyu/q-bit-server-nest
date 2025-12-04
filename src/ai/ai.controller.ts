@@ -1,7 +1,14 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { RecommendRequestDto, RecommendResponseDto } from './dto';
+import {
+  RecommendRequestDto,
+  RecommendResponseDto,
+  WeeklyReportRequestDto,
+  WeeklyReportResponseDto,
+} from './dto';
+import { JwtAuthGuard } from '../guard/jwt-auth.guard';
+import { Request } from 'express';
 
 @ApiTags('AI')
 @Controller('ai')
@@ -58,5 +65,33 @@ export class AiController {
     @Body() dto: RecommendRequestDto,
   ): Promise<RecommendResponseDto> {
     return this.aiService.recommendCertifications(dto);
+  }
+
+  @Post('weekly-report')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'AI 주간 리포트',
+    description:
+      '사용자의 주간 투두를 분석하여 AI가 리포트를 생성합니다. 인증 필요.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '리포트 생성 성공',
+    type: WeeklyReportResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: '인증 필요',
+  })
+  async weeklyReport(
+    @Req() req: Request,
+    @Body() dto: WeeklyReportRequestDto,
+  ): Promise<WeeklyReportResponseDto> {
+    const userId = (req.user as any)._id;
+    return this.aiService.generateWeeklyReport(
+      userId,
+      dto.sundayDate,
+      dto.refresh ?? false,
+    );
   }
 }
