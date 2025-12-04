@@ -25,15 +25,13 @@ interface QnetScheduleItem {
 }
 
 interface QnetApiResponse {
-  response: {
-    header: {
-      resultCode: string;
-      resultMsg: string;
-    };
-    body: {
-      items: QnetScheduleItem[];
-      totalCount: number;
-    };
+  header: {
+    resultCode: string;
+    resultMsg: string;
+  };
+  body: {
+    items: QnetScheduleItem[];
+    totalCount: number;
   };
 }
 
@@ -70,14 +68,14 @@ export class QnetScheduleService {
         }),
       );
 
-      if (response.data?.response?.header?.resultCode !== '00') {
+      if (response.data?.header?.resultCode !== '00') {
         this.logger.error(
-          `API 에러: ${response.data?.response?.header?.resultMsg}`,
+          `API 에러: ${response.data?.header?.resultMsg}`,
         );
         return null;
       }
 
-      return response.data.response.body.items || [];
+      return response.data.body.items || [];
     } catch (error) {
       this.logger.error('Q-net API 호출 실패', error);
       return null;
@@ -100,6 +98,23 @@ export class QnetScheduleService {
     };
   }
 
+  private extractGradeFromDescription(description: string): string | null {
+    const gradePatterns = [
+      '기술사',
+      '기능장',
+      '기사',
+      '산업기사',
+      '기능사',
+    ];
+
+    for (const grade of gradePatterns) {
+      if (description.includes(grade)) {
+        return grade;
+      }
+    }
+    return null;
+  }
+
   async updateCertSchedules() {
     const currentYear = new Date().getFullYear();
     const items = await this.fetchSchedules(currentYear);
@@ -115,12 +130,21 @@ export class QnetScheduleService {
     const schedulesByGrade = new Map<string, CertSchedule[]>();
 
     for (const item of items) {
-      const grade = item.qualgbNm;
+      const grade = this.extractGradeFromDescription(item.description);
+      if (!grade) {
+        this.logger.debug(`등급 추출 실패: ${item.description}`);
+        continue;
+      }
+
       if (!schedulesByGrade.has(grade)) {
         schedulesByGrade.set(grade, []);
       }
       schedulesByGrade.get(grade)?.push(this.mapQnetToCertSchedule(item));
     }
+
+    this.logger.log(
+      `등급별 일정 수: ${[...schedulesByGrade.entries()].map(([g, s]) => `${g}(${s.length})`).join(', ')}`,
+    );
 
     for (const [grade, schedules] of schedulesByGrade.entries()) {
       const result = await this.certModel.updateMany(
@@ -133,6 +157,7 @@ export class QnetScheduleService {
         this.logger.log(`${grade} 일정 업데이트: ${result.modifiedCount}건`);
       } else {
         notFound++;
+        this.logger.warn(`${grade} 매칭 실패 (matchedCount: ${result.matchedCount})`);
       }
     }
 
