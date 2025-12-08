@@ -152,6 +152,36 @@ export class TodoController {
     return this.todoService.findMonth(user._id, month, year);
   }
 
+  @Get('yearly/:year')
+  @ApiOperation({
+    summary: '연간 투두 요약 조회 (히트맵용)',
+    description: '특정 연도의 모든 날짜별 투두 완료율을 조회합니다.',
+  })
+  async getYearlyTodos(
+    @CurrentUser() user: { _id: string },
+    @Param('year', ParseIntPipe) year: number,
+  ) {
+    return this.todoService.findYearly(user._id, year);
+  }
+
+  @Get('streak')
+  @ApiOperation({
+    summary: '연속 학습일(스트릭) 조회',
+    description: '사용자의 연속 학습일 정보를 조회합니다.',
+  })
+  @ApiQuery({
+    name: 'date',
+    required: false,
+    description: '기준 날짜 (기본값: 오늘)',
+    example: '2025-12-08',
+  })
+  async getStreak(
+    @CurrentUser() user: { _id: string },
+    @Query('date') date?: string,
+  ) {
+    return this.todoService.getStreak(user._id, date);
+  }
+
   @ApiOperation({ summary: '특정 Todo 조회' })
   @Get(':id')
   async findOne(@CurrentUser() user: { _id: string }, @Param('id') id: string) {
