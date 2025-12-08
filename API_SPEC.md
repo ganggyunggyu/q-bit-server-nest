@@ -260,6 +260,8 @@ GET /cert/search/keyword?q=전기&limit=5
 | `GET` | `/todo/date?date=YYYY-MM-DD` | 특정 날짜 Todo 조회 | O |
 | `GET` | `/todo/week?sunday=YYYY-MM-DD` | 주간 Todo 조회 | O |
 | `GET` | `/todo/month?year=YYYY&month=M` | 월간 Todo 조회 | O |
+| `GET` | `/todo/yearly/:year` | 연간 투두 요약 (히트맵용) | O |
+| `GET` | `/todo/streak` | 연속 학습일(스트릭) 조회 | O |
 | `GET` | `/todo/exists?date=YYYY-MM-DD` | 해당 날짜 Todo 존재 여부 | O |
 | `GET` | `/todo/:id` | 특정 Todo 조회 | O |
 | `PATCH` | `/todo/:id` | Todo 수정 | O |
@@ -311,6 +313,55 @@ GET /cert/search/keyword?q=전기&limit=5
   }
 ]
 ```
+
+#### GET /todo/yearly/:year - Response
+
+```typescript
+{
+  year: number;
+  data: DailyTodoSummary[];
+  stats: YearlyStats;
+}
+
+interface DailyTodoSummary {
+  date: string;           // 'YYYY-MM-DD'
+  totalCount: number;     // 해당 날짜의 전체 투두 수
+  completedCount: number; // 완료된 투두 수
+  percentage: number;     // 완료율 (0-100)
+}
+
+interface YearlyStats {
+  totalDays: number;      // 투두가 있었던 총 일수
+  totalTodos: number;     // 총 투두 개수
+  completedTodos: number; // 완료된 투두 개수
+  averageRate: number;    // 평균 완료율
+}
+```
+
+**특징:**
+- 투두가 없는 날짜는 응답에 포함하지 않음
+- 히트맵 렌더링에 최적화된 형식
+
+#### GET /todo/streak - Response
+
+```typescript
+{
+  currentStreak: number;      // 현재 연속 학습일
+  longestStreak: number;      // 최장 연속 학습일
+  lastActiveDate: string | null;   // 마지막 학습일 ('YYYY-MM-DD')
+  streakStartDate: string | null;  // 현재 스트릭 시작일 ('YYYY-MM-DD')
+}
+```
+
+**Query Parameters:**
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|----------|------|------|------|
+| `date` | `string` | X | 기준 날짜 (기본값: 오늘) |
+
+**특징:**
+- 하루라도 투두를 완료하면 학습일로 인정
+- 오늘 또는 어제 완료 기록이 있어야 currentStreak 카운트
 
 ---
 
